@@ -2,7 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     id("com.google.devtools.ksp")
-    id("kotlin-kapt")
+//    id("kotlin-kapt")
     kotlin("plugin.serialization") version "1.9.20"
     alias(libs.plugins.kotlin.safeargs)
 }
@@ -84,5 +84,5 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     implementation(libs.androidx.room.runtime)
-    kapt(libs.androidx.room.compiler)
+    ksp(libs.androidx.room.compiler)
 }
