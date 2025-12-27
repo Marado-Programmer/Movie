@@ -33,16 +33,8 @@ class MovieListFragment : Fragment(R.layout.fragment_movie_list) {
     private var _binding: FragmentMovieListBinding? = null
     private val binding get() = _binding!!
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-        _binding = FragmentMovieListBinding.bind(view)
-
-        setupToolbar()
-        binding.list.adapter = adapter
-
-        viewModel.moviesWithPictures.observe(viewLifecycleOwner) { movies ->
-            adapter.submitList(movies)
-        }
+    override fun onStart() {
+        super.onStart()
         viewModel.loadMoviesOnline(
             title = args.titleFilter.ifBlank { null },
             genre = args.genreFilter.ifBlank { null },
@@ -50,6 +42,30 @@ class MovieListFragment : Fragment(R.layout.fragment_movie_list) {
             sortOrder = args.sortOrder.ifBlank { "desc" },
             favoritesOnly = args.favoritesOnly
         )
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        _binding = FragmentMovieListBinding.bind(view)
+
+        setupToolbar()
+        binding.list.adapter = adapter
+
+        binding.swipeRefresh.setOnRefreshListener {
+            viewModel.loadMoviesOnline(
+                title = args.titleFilter.ifBlank { null },
+                genre = args.genreFilter.ifBlank { null },
+                sortBy = args.sortBy.ifBlank { "releaseDate" },
+                sortOrder = args.sortOrder.ifBlank { "desc" },
+                favoritesOnly = args.favoritesOnly
+            )
+            binding.loading.visibility = View.VISIBLE
+        }
+        viewModel.moviesWithPictures.observe(viewLifecycleOwner) { movies ->
+            binding.loading.visibility = View.GONE
+            adapter.submitList(movies)
+            binding.swipeRefresh.isRefreshing = false
+        }
 
         binding.create.setOnClickListener {
             // TODO: CREATE
@@ -100,8 +116,7 @@ class MovieListFragment : Fragment(R.layout.fragment_movie_list) {
             holder.bind(getItem(position))
         }
 
-        inner class ViewHolder(binding: ItemMovieBinding) :
-            RecyclerView.ViewHolder(binding.root) {
+        inner class ViewHolder(binding: ItemMovieBinding) : RecyclerView.ViewHolder(binding.root) {
             private var movie: MovieWithPictures? = null
 
             init {
