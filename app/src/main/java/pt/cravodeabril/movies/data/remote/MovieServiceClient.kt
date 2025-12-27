@@ -91,6 +91,32 @@ object MovieServiceClient {
             )
         }
     }
+
+    fun getMovieRatings(
+        movieId: Int,
+        sortBy: String = "desc",
+        excludeUser: Int? = null
+    ): Flow<ApiResult<List<MovieRatingResponse>>> = flow {
+        emit(ApiResult.Loading)
+        try {
+            val response = client.get("/movies/$movieId/ratings") {
+                parameter("sortBy", sortBy)
+                excludeUser?.let { parameter("excludeUser", it) }
+            }
+
+            if (response.status.isSuccess()) emit(ApiResult.Success(response.body()))
+            else emit(ApiResult.Failure(response.body()))
+        } catch (e: Exception) {
+            emit(ApiResult.Failure(
+                ProblemDetails(
+                    type = "Network",
+                    title = "Network error",
+                    status = 500,
+                    detail = e.message ?: "Unknown"
+                )
+            ))
+        }
+    }
 }
 
 
@@ -148,3 +174,13 @@ data class Credentials(
     val username: String,
     val password: String
 )
+
+@Serializable
+data class MovieRatingResponse(
+    val movieId: Int,
+    val userId: Int,
+    val score: Int,
+    val comment: String?
+)
+
+

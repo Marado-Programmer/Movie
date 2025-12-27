@@ -10,6 +10,7 @@ import pt.cravodeabril.movies.data.local.entity.MoviePicture
 import pt.cravodeabril.movies.data.local.entity.MovieWithPictures
 import pt.cravodeabril.movies.data.local.entity.Person
 import pt.cravodeabril.movies.data.remote.MovieQueryResponse
+import pt.cravodeabril.movies.data.remote.MovieRatingResponse
 import pt.cravodeabril.movies.data.remote.MovieServiceClient
 import pt.cravodeabril.movies.data.remote.toEntity
 import kotlin.time.Instant
@@ -31,6 +32,28 @@ class MovieRepository(private val movieDao: MovieDao) {
             persons = allPersons
         )
     }
+
+    suspend fun getMovieRatings(movieId: Long): List<MovieRatingResponse> {
+        // For now, just call the API directly (no Room caching for ratings yet)
+        // Later you can add Room caching if needed
+        return try {
+            MovieServiceClient.getMovieRatings(movieId.toInt()).collect { result ->
+                when (result) {
+                    is ApiResult.Success -> result.data
+                    else -> emptyList()
+                }
+            }
+            emptyList() // fallback
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    // Better version with Flow support (for loading states)
+    fun fetchMovieRatings(movieId: Long): Flow<ApiResult<List<MovieRatingResponse>>> {
+        return MovieServiceClient.getMovieRatings(movieId.toInt())
+    }
+
 
 //    fun getMoviesFlow(): Flow<List<Movie>> = flow {
 //        emit(movieDao.getAllMovies())

@@ -25,26 +25,32 @@ class MovieDetailsFragment : Fragment(R.layout.fragment_movie_details) {
         super.onViewCreated(view, savedInstanceState)
         _binding = FragmentMovieDetailsBinding.bind(view)
 
-        viewModel.loadMovieById(args.movieId)
+        viewModel.loadMovieDetails(args.movieId)
+        viewModel.loadRatings(args.movieId)
 
-        // Observe movie details data
-        viewModel.movie.observe(viewLifecycleOwner) { movie ->
+        viewModel.movieDetails.observe(viewLifecycleOwner) { movie ->
             bindMovie(movie)
         }
 
-        // Favorite button
+//        viewModel.ratings.observe(viewLifecycleOwner) { ratings ->
+//            binding.ratingsRecycler.adapter?.notifyDataSetChanged()
+//            // or adapter.submitList(ratings)
+//            binding.noRatingsText.visibility = if (ratings.isEmpty()) View.VISIBLE else View.GONE
+//        }
+//
+//        viewModel.ratingsLoading.observe(viewLifecycleOwner) { loading ->
+//            binding.ratingsProgress.visibility = if (loading) View.VISIBLE else View.GONE
+//        }
+
         binding.favoriteButton.setOnClickListener {
             viewModel.toggleFavorite(args.movieId)
         }
 
-        // Rate button
         binding.rateButton.setOnClickListener {
-            // open a rating dialog
         }
 
         // Edit (admin only)
         binding.editButton.setOnClickListener {
-            // navigate to EditMovieFragment
         }
     }
 
@@ -57,7 +63,6 @@ class MovieDetailsFragment : Fragment(R.layout.fragment_movie_details) {
         binding.movieDirector.text = getString(R.string.movie_director, movie.director ?: "Unknown")
         binding.movieGenres.text = movieWithPictures.genres.joinToString(", ")
         binding.movieAge.text = getString(R.string.movie_age, movie.minimumAge)
-        // Use Coil to load the image
         val mainPicture = movieWithPictures.pictures.firstOrNull { it.mainPicture }
         mainPicture?.let {
             val posterUrl = "http://10.0.2.2:8080/movies/${movie.id}/pictures/${it.id}"
