@@ -1,0 +1,45 @@
+name: movies-api-stack
+services:
+  postgres:
+    image: postgres:latest
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: postgres
+    ports:
+      - "7432:5432"
+    volumes:
+      - C:/docker-volumes/movies-api/postgres:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: 25808@stu.cravodeabril.pt
+      PGADMIN_DEFAULT_PASSWORD: 25808ipbeja
+    ports:
+      - "7081:80"
+
+  api:
+    image: diogopmipbeja/movies-api:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: postgres
+      DB_USER: admin
+      DB_PASSWORD: admin
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: admin
+    ports:
+      - "8080:8080"
+    volumes:
+      - C:/docker-volumes/movies-api/data:/opt/movies-api

@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph.xml"
+    app:startDestination="@id/loginFragment">
+
+    <fragment
+        android:id="@+id/loginFragment"
+        android:name="pt.cravodeabril.movies.ui.LoginFragment"
+        android:label="fragment_login"
+        tools:layout="@layout/fragment_login">
+        <action
+            android:id="@+id/action_loginFragment_to_movieFragment"
+            app:destination="@id/movieListFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/movieListFragment"
+        android:name="pt.cravodeabril.movies.ui.movie.MovieListFragment"
+        android:label="@string/movies"
+        tools:layout="@layout/fragment_movie_list">
+        <argument
+            android:name="titleFilter"
+            android:defaultValue=""
+            app:argType="string" />
+        <argument
+            android:name="genreFilter"
+            android:defaultValue=""
+            app:argType="string" />
+        <argument
+            android:name="sortBy"
+            android:defaultValue="releaseDate"
+            app:argType="string" />
+        <argument
+            android:name="sortOrder"
+            android:defaultValue="desc"
+            app:argType="string" />
+        <argument
+            android:name="favoritesOnly"
+            android:defaultValue="false"
+            app:argType="boolean" />
+        <action
+            android:id="@+id/action_movieListFragment_to_movieDetailsFragment"
+            app:destination="@id/movieDetailsFragment">
+            <argument
+                android:name="movieId"
+                app:argType="long" />
+        </action>
+        <action
+            android:id="@+id/action_movieListFragment_to_loginFragment"
+            app:destination="@id/loginFragment"
+            app:popUpTo="@id/movieListFragment"
+            app:popUpToInclusive="true" />
+        <deepLink app:uri="movies://movies?genre={genreFilter}&amp;title={titleFilter}" />
+    </fragment>
+    <fragment
+        android:id="@+id/movieDetailsFragment"
+        android:name="pt.cravodeabril.movies.ui.movie.MovieDetailsFragment"
+        android:label="@string/movie_details"
+        tools:layout="@layout/fragment_movie_details">
+        <argument
+            android:name="movieId"
+            app:argType="long" />
+        <action
+            android:id="@+id/action_movieDetailsFragment_to_movieListFragment"
+            app:destination="@id/movieListFragment"
+            app:popUpTo="@id/movieListFragment"
+            app:popUpToInclusive="false" />
+        <action
+            android:id="@+id/action_movieDetailsFragment_to_movieEditFragment"
+            app:destination="@id/movieEditFragment">
+            <argument
+                android:name="movieId"
+                app:argType="long" />
+        </action>
+        <deepLink app:uri="movies://movies/{movieId}" />
+    </fragment>
+    <fragment
+        android:id="@+id/movieEditFragment"
+        android:name="pt.cravodeabril.movies.ui.movie.MovieDetailsFragment"
+        android:label="@string/movie_edit"
+        tools:layout="@layout/fragment_movie_edit">
+        <argument
+            android:name="movieId"
+            app:argType="long" />
+    </fragment>
+</navigation>
