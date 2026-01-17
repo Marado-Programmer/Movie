@@ -10,7 +10,6 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDateRange
 import pt.cravodeabril.movies.data.ApiResult
-import pt.cravodeabril.movies.data.ProblemDetails
 import pt.cravodeabril.movies.data.local.AppDatabase
 import pt.cravodeabril.movies.data.local.entity.MovieWithDetails
 import pt.cravodeabril.movies.data.repository.MovieRepository
@@ -38,9 +37,10 @@ class MovieListViewModel(app: Application) : AndroidViewModel(app) {
         sortBy: String = "releaseDate"
     ) {
         viewModelScope.launch {
-            repository.observeMovies(query, genres, date, rating, favorites, sortBy).collect { movies ->
-                _moviesFromApi.postValue(ApiResult.Success(movies))
-            }
+            repository.observeMovies(query, genres, date, rating, favorites, sortBy)
+                .collect { movies ->
+                    _moviesFromApi.postValue(ApiResult.Success(movies))
+                }
         }
     }
 
@@ -55,7 +55,8 @@ class MovieListViewModel(app: Application) : AndroidViewModel(app) {
 
     fun toggleFavorite(movieId: Long) {
         viewModelScope.launch {
-            repository.isFavorite(movieId)?.let { toggle -> repository.toggleFavorite(movieId, toggle) }
+            repository.isFavorite(movieId)
+                ?.let { toggle -> repository.toggleFavorite(movieId, toggle) }
         }
     }
 }

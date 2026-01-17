@@ -22,7 +22,6 @@ import kotlinx.serialization.json.Json
 import pt.cravodeabril.movies.data.ApiResult
 import pt.cravodeabril.movies.data.ProblemDetails
 import java.io.File
-import java.io.FileOutputStream
 import kotlin.time.Instant
 
 object MovieServiceClient {

@@ -10,7 +10,6 @@ import pt.cravodeabril.movies.data.ApiResult
 import pt.cravodeabril.movies.data.ProblemDetails
 import pt.cravodeabril.movies.data.local.AppDatabase
 import pt.cravodeabril.movies.data.local.entity.MovieWithDetails
-import pt.cravodeabril.movies.data.local.entity.UserRatingEntity
 import pt.cravodeabril.movies.data.repository.MovieRepository
 
 class MovieDetailsViewModel(app: Application) : AndroidViewModel(app) {
