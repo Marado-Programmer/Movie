@@ -16,8 +16,9 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import coil3.request.target
 import pt.cravodeabril.movies.R
+import pt.cravodeabril.movies.data.ApiResult
 import pt.cravodeabril.movies.data.createCoilImageLoader
-import pt.cravodeabril.movies.data.local.entity.MovieWithPictures
+import pt.cravodeabril.movies.data.local.entity.MovieWithDetails
 import pt.cravodeabril.movies.databinding.FragmentMovieListBinding
 import pt.cravodeabril.movies.databinding.ItemMovieBinding
 import pt.cravodeabril.movies.utils.diffCallbackOf
@@ -35,12 +36,12 @@ class MovieListFragment : Fragment(R.layout.fragment_movie_list) {
 
     override fun onStart() {
         super.onStart()
-        viewModel.loadMoviesOnline(
-            title = args.titleFilter.ifBlank { null },
-            genre = args.genreFilter.ifBlank { null },
-            sortBy = args.sortBy.ifBlank { "releaseDate" },
-            sortOrder = args.sortOrder.ifBlank { "desc" },
-            favoritesOnly = args.favoritesOnly
+        viewModel.observeMovies(
+            args.titleFilter.ifBlank { "" },
+//            genre = args.genreFilter.ifBlank { null },
+//            sortBy = args.sortBy.ifBlank { "releaseDate" },
+//            sortOrder = args.sortOrder.ifBlank { "desc" },
+//            favoritesOnly = args.favoritesOnly
         )
     }
 
@@ -52,24 +53,30 @@ class MovieListFragment : Fragment(R.layout.fragment_movie_list) {
         binding.list.adapter = adapter
 
         binding.swipeRefresh.setOnRefreshListener {
-            viewModel.loadMoviesOnline(
-                title = args.titleFilter.ifBlank { null },
-                genre = args.genreFilter.ifBlank { null },
-                sortBy = args.sortBy.ifBlank { "releaseDate" },
-                sortOrder = args.sortOrder.ifBlank { "desc" },
-                favoritesOnly = args.favoritesOnly
-            )
+            viewModel.refresh()
             binding.loading.visibility = View.VISIBLE
         }
-        viewModel.moviesWithPictures.observe(viewLifecycleOwner) { movies ->
-            binding.loading.visibility = View.GONE
-            adapter.submitList(movies)
-            binding.swipeRefresh.isRefreshing = false
+
+        viewModel.movies.observe(viewLifecycleOwner) { state ->
+            when (state) {
+                is ApiResult.Loading -> binding.loading.visibility = View.VISIBLE
+                is ApiResult.Success -> {
+                    binding.loading.visibility = View.GONE
+                    adapter.submitList(state.data)
+                    binding.swipeRefresh.isRefreshing = false
+                }
+
+                is ApiResult.Failure -> {
+                    binding.loading.visibility = View.GONE
+                    // showError(state.message)
+                    binding.swipeRefresh.isRefreshing = false
+                }
+            }
         }
 
         binding.create.setOnClickListener {
             // TODO: CREATE
-            // findNavController().navigate(ListFragmentDirections.actionMovieFragmentToDetailsFragment())
+            // findNavController().navigate(MovieListFragmentDirections.actionMovieListFragmentToLoginFragment())
         }
     }
 
@@ -102,7 +109,7 @@ class MovieListFragment : Fragment(R.layout.fragment_movie_list) {
      * TODO: Replace the implementation with code for your data type.
      */
     inner class ListAdapter :
-        androidx.recyclerview.widget.ListAdapter<MovieWithPictures, ListAdapter.ViewHolder>(
+        androidx.recyclerview.widget.ListAdapter<MovieWithDetails, ListAdapter.ViewHolder>(
             diffCallbackOf(idSelector = { it.movie.id })
         ) {
 
@@ -117,7 +124,7 @@ class MovieListFragment : Fragment(R.layout.fragment_movie_list) {
         }
 
         inner class ViewHolder(binding: ItemMovieBinding) : RecyclerView.ViewHolder(binding.root) {
-            private var movie: MovieWithPictures? = null
+            private var movie: MovieWithDetails? = null
 
             init {
                 binding.root.setOnClickListener {
@@ -136,7 +143,7 @@ class MovieListFragment : Fragment(R.layout.fragment_movie_list) {
             val moviePoster: ImageView = binding.moviePoster
             val movieAge: TextView = binding.movieAge
 
-            fun bind(movie: MovieWithPictures) {
+            fun bind(movie: MovieWithDetails) {
                 this.movie = movie
 
                 movieTitle.text = movie.movie.title
@@ -155,7 +162,7 @@ class MovieListFragment : Fragment(R.layout.fragment_movie_list) {
 
                     imageLoader.enqueue(request)
                 } ?: run {
-                    //moviePoster.setImageResource(R.drawable.ic_movie_placeholder)
+                    moviePoster.setImageResource(R.drawable.movie_border_24px)
                 }
             }
         }

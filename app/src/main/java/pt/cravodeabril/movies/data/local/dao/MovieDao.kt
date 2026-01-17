@@ -6,27 +6,74 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
-import pt.cravodeabril.movies.data.local.entity.Genre
-import pt.cravodeabril.movies.data.local.entity.Movie
-import pt.cravodeabril.movies.data.local.entity.MovieWithPictures
-import pt.cravodeabril.movies.data.local.entity.Person
+import pt.cravodeabril.movies.data.local.entity.CastMemberEntity
+import pt.cravodeabril.movies.data.local.entity.MovieEntity
+import pt.cravodeabril.movies.data.local.entity.MovieGenreCrossRef
+import pt.cravodeabril.movies.data.local.entity.MovieWithDetails
+import pt.cravodeabril.movies.data.local.entity.PictureEntity
+import pt.cravodeabril.movies.data.local.entity.UserFavoriteEntity
+import pt.cravodeabril.movies.data.local.entity.UserRatingEntity
 
 @Dao
 interface MovieDao {
     @Transaction
-    @Query("SELECT * FROM movies")
-    fun getAllMoviesWithPictures(): Flow<List<MovieWithPictures>>
+    @Query("""
+    SELECT * FROM movies
+    ORDER BY
+        CASE WHEN :sortBy = 'title' THEN title END COLLATE NOCASE,
+        CASE WHEN :sortBy = 'rating' THEN rating END DESC,
+        releaseDate DESC
+    """)
+    fun observeMovies(sortBy: String): Flow<List<MovieWithDetails>>
 
     @Transaction
     @Query("SELECT * FROM movies WHERE id = :movieId")
-    suspend fun getMovieWithPictures(movieId: Long): MovieWithPictures?
-
-    @Query("SELECT * FROM genres")
-    suspend fun getAllGenres(): List<Genre>
-
-    @Query("SELECT * FROM persons")
-    suspend fun getAllPersons(): List<Person>
+    suspend fun observeMovie(movieId: Long): MovieWithDetails?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertMovies(movies: List<Movie>)
+    suspend fun upsertMovies(movies: List<MovieEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertMovie(movie: MovieEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertPictures(pictures: List<PictureEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertGenres(genres: List<MovieGenreCrossRef>)
+
+    @Query("DELETE FROM movie_genres WHERE movieId = :movieId")
+    suspend fun clearMovieGenres(movieId: Long)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertCast(genres: List<CastMemberEntity>)
+
+    @Query("""
+    SELECT EXISTS(
+        SELECT 1 FROM user_favorites
+        WHERE userId = :userId AND movieId = :movieId
+    )
+    """)
+    suspend fun isFavorite(movieId: Long, userId: Long): Boolean
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun addFavorites(favorites: List<UserFavoriteEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun addFavorite(favorite: UserFavoriteEntity)
+
+    @Query("DELETE FROM user_favorites WHERE userId = :userId AND movieId = :movieId")
+    suspend fun removeFavorite(userId: Long, movieId: Long)
+
+    @Query("""
+    SELECT * FROM user_ratings
+    WHERE userId = :userId AND movieId = :movieId
+    """)
+    suspend fun getRating(movieId: Long, userId: Long): UserRatingEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertRating(rating: UserRatingEntity)
+
+    @Query("DELETE FROM user_ratings WHERE userId = :userId AND movieId = :movieId")
+    suspend fun deleteRating(userId: Long, movieId: Long)
 }

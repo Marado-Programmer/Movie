@@ -8,64 +8,54 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
+import kotlinx.datetime.LocalDateRange
 import pt.cravodeabril.movies.data.ApiResult
+import pt.cravodeabril.movies.data.ProblemDetails
 import pt.cravodeabril.movies.data.local.AppDatabase
-import pt.cravodeabril.movies.data.local.entity.Movie
-import pt.cravodeabril.movies.data.local.entity.MovieWithPictures
-import pt.cravodeabril.movies.data.remote.toEntity
+import pt.cravodeabril.movies.data.local.entity.MovieWithDetails
 import pt.cravodeabril.movies.data.repository.MovieRepository
 import kotlin.uuid.ExperimentalUuidApi
 
 class MovieListViewModel(app: Application) : AndroidViewModel(app) {
     private val db = AppDatabase(app)
-    private val repository = MovieRepository(db.movieDao())
+    private val repository = MovieRepository(db.movieDao(), db.genreDao(), db.personDao())
 
-    private val _moviesFromApi = MutableLiveData<ApiResult<List<Movie>>>()
-    val movies: LiveData<ApiResult<List<Movie>>> = _moviesFromApi
-    private val _moviesWithPictures = MutableLiveData<List<MovieWithPictures>>(emptyList())
-    val moviesWithPictures: LiveData<List<MovieWithPictures>> = _moviesWithPictures
+    // TODO: StateFlow
+    private val _moviesFromApi = MutableLiveData<ApiResult<List<MovieWithDetails>>>()
+    val movies: LiveData<ApiResult<List<MovieWithDetails>>> = _moviesFromApi
 
     init {
-        loadMoviesWithPictures()
+        observeMovies()
+        refresh()
     }
 
-    fun loadMoviesWithPictures() {
+    fun observeMovies(
+        query: String = "",
+        genres: List<String> = emptyList(),
+        date: LocalDateRange? = null,
+        rating: IntRange? = null,
+        favorites: Long? = null,
+        sortBy: String = "releaseDate"
+    ) {
         viewModelScope.launch {
-            try {
-                repository.getAllMoviesWithPictures()
-                    .collect { data -> _moviesWithPictures.postValue(data) }
-            } catch (e: Exception) {
-                e.printStackTrace()
+            repository.observeMovies(query, genres, date, rating, favorites, sortBy).collect { movies ->
+                _moviesFromApi.postValue(ApiResult.Success(movies))
             }
         }
     }
 
-    fun loadMoviesOnline(
-        title: String? = null,
-        genre: String? = null,
-        sortBy: String = "releaseDate",
-        sortOrder: String = "desc",
-        favoritesOnly: Boolean = false
-    ) {
+    fun refresh() {
         viewModelScope.launch {
-            repository.refreshMoviesFromNetwork(
-                title = title,
-                genre = genre,
-                sortBy = sortBy,
-                sortOrder = sortOrder,
-                favoritesOnly = favoritesOnly
-            ).collect { result ->
-                _moviesFromApi.value = when (result) {
-                    is ApiResult.Success -> {
-                        val entities = result.data.map { it.toEntity() }
-                        _moviesFromApi.postValue(ApiResult.Success(entities))
-                        ApiResult.Success(entities)
-                    }
-
-                    is ApiResult.Failure -> result
-                    ApiResult.Loading -> ApiResult.Loading
-                }
+            when (val result = repository.refreshMovies()) {
+                is ApiResult.Failure -> _moviesFromApi.postValue(ApiResult.Failure(result.error))
+                else -> Unit
             }
+        }
+    }
+
+    fun toggleFavorite(movieId: Long) {
+        viewModelScope.launch {
+            repository.isFavorite(movieId)?.let { toggle -> repository.toggleFavorite(movieId, toggle) }
         }
     }
 }

@@ -2,74 +2,135 @@ package pt.cravodeabril.movies.data.local.entity
 
 import androidx.room.Embedded
 import androidx.room.Entity
+import androidx.room.ForeignKey
 import androidx.room.Index
+import androidx.room.Junction
 import androidx.room.PrimaryKey
 import androidx.room.Relation
+import kotlinx.datetime.LocalDate
 import kotlin.time.Instant
 
 @Entity(tableName = "movies")
-data class Movie(
-    @PrimaryKey(autoGenerate = true) val id: Long,
+data class MovieEntity(
+    @PrimaryKey val id: Long,
     val title: String,
     val synopsis: String,
-    val minimumAge: Int,
-    val director: Long?,
+    val releaseDate: LocalDate,
+    val directorId: Long?,
+    val rating: Float?,
+    val minimumAge: Int?,
     val createdAt: Instant,
     val updatedAt: Instant?
 )
 
-@Entity(tableName = "movie_pictures")
-data class MoviePicture(
-    @PrimaryKey(autoGenerate = true) val id: Long,
+
+@Entity(
+    tableName = "pictures",
+    foreignKeys = [
+        ForeignKey(
+            entity = MovieEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["movieId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("movieId")]
+)
+data class PictureEntity(
+    @PrimaryKey val id: Long,
     val movieId: Long,
-    val url: String,
     val filename: String,
     val contentType: String,
-    val description: String?,
-    val mainPicture: Boolean
+    val mainPicture: Boolean,
+    val description: String?
 )
 
 @Entity(
     tableName = "movie_genres",
-    primaryKeys = ["movieId", "genreId"],
-    indices = [Index(value = ["genreId"])]
+    primaryKeys = ["movieId", "genre"]
 )
-data class MovieGenre(
-    val movieId: Long, val genreId: Long
+data class MovieGenreCrossRef(
+    val movieId: Long,
+    val genre: String
 )
 
 @Entity(
-    tableName = "cast_members", primaryKeys = ["movieId", "personId", "role"]
+    tableName = "cast_members",
+    primaryKeys = ["movieId", "personId"]
 )
-data class CastMember(
-    val movieId: Long, val personId: Long, val role: String
-)
-
-data class MovieWithPictures(
-    @Embedded val movie: Movie, @Relation(
-        parentColumn = "id", entityColumn = "movieId"
-    ) val pictures: List<MoviePicture>
+data class CastMemberEntity(
+    val movieId: Long,
+    val personId: Long,
+    val character: String
 )
 
-data class MovieWithGenres(
-    @Embedded val movie: Movie,
+@Entity(
+    tableName = "user_ratings",
+    primaryKeys = ["userId", "movieId"],
+    foreignKeys = [
+        ForeignKey(
+            entity = UserEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["userId"],
+            onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = MovieEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["movieId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("movieId"), Index("userId")]
+)
+data class UserRatingEntity(
+    val userId: Long,
+    val movieId: Long,
+    val rating: Int,
+    val comment: String?
+)
+
+@Entity(
+    tableName = "user_favorites",
+    primaryKeys = ["userId", "movieId"],
+    foreignKeys = [
+        ForeignKey(
+            entity = UserEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["userId"],
+            onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = MovieEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["movieId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index("movieId"), Index("userId")]
+)
+data class UserFavoriteEntity(
+    val userId: Long,
+    val movieId: Long
+)
+
+data class MovieWithDetails(
+    @Embedded val movie: MovieEntity,
 
     @Relation(
-        parentColumn = "id", entityColumn = "id", associateBy = androidx.room.Junction(
-            value = MovieGenre::class, parentColumn = "movieId", entityColumn = "genreId"
+        parentColumn = "id",
+        entityColumn = "movieId"
+    )
+    val pictures: List<PictureEntity>,
+
+    @Relation(
+        parentColumn = "id",
+        entityColumn = "name",
+        associateBy = Junction(
+            value = MovieGenreCrossRef::class,
+            parentColumn = "movieId",
+            entityColumn = "genre"
         )
-    ) val genres: List<Genre>
+    )
+    val genres: List<GenreEntity>
 )
-
-data class CastMemberWithPerson(
-    val castMember: CastMember,
-    val person: Person
-)
-
-data class MovieDetailsComposite(
-    val movie: Movie,
-    val pictures: List<MoviePicture>,
-    val genres: List<Genre>,
-    val castMembers: List<CastMemberWithPerson>
-)
-

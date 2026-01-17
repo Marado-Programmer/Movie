@@ -1,125 +1,297 @@
 package pt.cravodeabril.movies.data.repository
 
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateRange
 import pt.cravodeabril.movies.data.ApiResult
+import pt.cravodeabril.movies.data.ProblemDetails
+import pt.cravodeabril.movies.data.local.dao.GenreDao
 import pt.cravodeabril.movies.data.local.dao.MovieDao
-import pt.cravodeabril.movies.data.local.entity.Genre
-import pt.cravodeabril.movies.data.local.entity.Movie
-import pt.cravodeabril.movies.data.local.entity.MoviePicture
-import pt.cravodeabril.movies.data.local.entity.MovieWithPictures
-import pt.cravodeabril.movies.data.local.entity.Person
-import pt.cravodeabril.movies.data.remote.MovieQueryResponse
-import pt.cravodeabril.movies.data.remote.MovieRatingResponse
+import pt.cravodeabril.movies.data.local.dao.PersonDao
+import pt.cravodeabril.movies.data.local.entity.CastMemberEntity
+import pt.cravodeabril.movies.data.local.entity.GenreEntity
+import pt.cravodeabril.movies.data.local.entity.MovieEntity
+import pt.cravodeabril.movies.data.local.entity.MovieGenreCrossRef
+import pt.cravodeabril.movies.data.local.entity.MovieWithDetails
+import pt.cravodeabril.movies.data.local.entity.PersonEntity
+import pt.cravodeabril.movies.data.local.entity.PictureEntity
+import pt.cravodeabril.movies.data.local.entity.UserFavoriteEntity
+import pt.cravodeabril.movies.data.local.entity.UserRatingEntity
+import pt.cravodeabril.movies.data.remote.MovieDetail
 import pt.cravodeabril.movies.data.remote.MovieServiceClient
-import pt.cravodeabril.movies.data.remote.toEntity
-import kotlin.time.Instant
+import pt.cravodeabril.movies.data.remote.MovieSimple
+import kotlin.math.roundToInt
 
-class MovieRepository(private val movieDao: MovieDao) {
-    fun getAllMoviesWithPictures(): Flow<List<MovieWithPictures>> =
-        movieDao.getAllMoviesWithPictures()
-
-    suspend fun getMovieWithDetailsById(id: Long): MovieDetailsManual {
-        val movieWithPictures = movieDao.getMovieWithPictures(id)
-        val allGenres = movieDao.getAllGenres()
-        val allPersons = movieDao.getAllPersons()
-
-        // Manual composition - simple and works!
-        return MovieDetailsManual(
-            movie = movieWithPictures?.movie ?: return MovieDetailsManual.empty(),
-            pictures = movieWithPictures.pictures,
-            genres = allGenres,
-            persons = allPersons
-        )
-    }
-
-    suspend fun getMovieRatings(movieId: Long): List<MovieRatingResponse> {
-        // For now, just call the API directly (no Room caching for ratings yet)
-        // Later you can add Room caching if needed
-        return try {
-            MovieServiceClient.getMovieRatings(movieId.toInt()).collect { result ->
-                when (result) {
-                    is ApiResult.Success -> result.data
-                    else -> emptyList()
-                }
-            }
-            emptyList() // fallback
-        } catch (_: Exception) {
-            emptyList()
-        }
-    }
-
-    // Better version with Flow support (for loading states)
-    fun fetchMovieRatings(movieId: Long): Flow<ApiResult<List<MovieRatingResponse>>> {
-        return MovieServiceClient.getMovieRatings(movieId.toInt())
-    }
-
-
-//    fun getMoviesFlow(): Flow<List<Movie>> = flow {
-//        emit(movieDao.getAllMovies())
-//    }
-
-    suspend fun upsertMovies(movies: List<Movie>) {
-        movieDao.insertMovies(movies)
-    }
-
-    fun fetchMoviesFromApi(
-        title: String? = null,
-        genre: String? = null,
-        sortBy: String = "releaseDate",
-        sortOrder: String = "desc",
-        favoritesOnly: Boolean = false,
-        username: String = "admin",  // Replace with logged user credentials later
-        password: String = "admin"
-    ): Flow<ApiResult<List<MovieQueryResponse>>> {
-        // Apply credentials & call Ktor client
-        return MovieServiceClient.apply {
-            setCredentials(username, password)
-        }.getMovies(
-            order = sortOrder,
-            sortBy = sortBy,
-            title = title,
-            genre = genre,
-            favoritesOnly = favoritesOnly
-        )
-    }
-
-
-    fun refreshMoviesFromNetwork(
-        title: String? = null,
-        genre: String? = null,
-        sortBy: String = "releaseDate",
-        sortOrder: String = "desc",
-        favoritesOnly: Boolean = false
-    ): Flow<ApiResult<List<MovieQueryResponse>>> = flow {
-        fetchMoviesFromApi(title, genre, sortBy, sortOrder, favoritesOnly).collect { result ->
-            when (result) {
-                is ApiResult.Success -> {
-                    val entities = result.data.map { it.toEntity() }
-                    upsertMovies(entities)
-                    emit(ApiResult.Success(result.data))
-                }
-
-                is ApiResult.Failure -> emit(result)
-                ApiResult.Loading -> emit(ApiResult.Loading)
-            }
-        }
-    }
-
-}
-
-data class MovieDetailsManual(
-    val movie: Movie,
-    val pictures: List<MoviePicture>,
-    val genres: List<Genre>,
-    val persons: List<Person>
+class MovieRepository(
+    private val movieDao: MovieDao,
+    private val genreDao: GenreDao,
+    private val personDao: PersonDao,
 ) {
-    companion object {
-        fun empty() = MovieDetailsManual(
-            movie = Movie(0, "", "", 0, null, Instant.DISTANT_PAST, null),
-            pictures = emptyList(),
-            genres = emptyList(),
-            persons = emptyList()
-        )
+    // TODO: filter by `director`
+    fun observeMovies(
+        query: String = "",
+        genres: List<String> = emptyList(),
+        date: LocalDateRange? = null,
+        rating: IntRange? = null,
+        favorites: Long? = null,
+        sortBy: String = "releaseDate"
+    ): Flow<List<MovieWithDetails>> = movieDao.observeMovies(sortBy).map { movies ->
+        movies.filter {
+            it.movie.title.contains(
+                query, true
+            ) || it.movie.synopsis.contains(query, true)
+        }.filter { genres.isEmpty() || it.genres.any { g -> g.name in genres } }
+            .filter { date == null || date.contains(it.movie.releaseDate) }
+            .filter { rating == null || (it.movie.rating != null && rating.contains(it.movie.rating.roundToInt())) }
+            .filter { favorites == null || movieDao.isFavorite(it.movie.id, favorites) }
     }
+
+    suspend fun refreshMovies(
+        offset: Long = 0,
+        count: Int = Int.MAX_VALUE,
+        director: Int? = null,
+        genre: String? = null,
+        title: String? = null,
+        fromReleaseDate: LocalDate? = null,
+        toReleaseDate: LocalDate? = null,
+        fromRating: Int = 0,
+        toRating: Int = 5,
+        favoritesOnly: Boolean = false,
+        sortBy: String = "releaseDate",
+        sortOrder: String = "desc",
+    ): ApiResult<Unit> {
+        return when (val result = MovieServiceClient.getMovies(
+            offset,
+            count,
+            director,
+            genre,
+            title,
+            fromReleaseDate,
+            toReleaseDate,
+            fromRating,
+            toRating,
+            favoritesOnly,
+            sortBy,
+            sortOrder
+        ).first() { it !is ApiResult.Loading }) {
+            is ApiResult.Success -> {
+                persistMovies(result.data)
+                ApiResult.Success(Unit)
+            }
+
+            is ApiResult.Failure -> result
+            else -> ApiResult.Failure(
+                ProblemDetails("Unknown", "Unexpected state", 500, "")
+            )
+        }
+    }
+
+    suspend fun observeMovie(id: Long): MovieWithDetails? = movieDao.observeMovie(id)
+
+    suspend fun refreshMovie(movieId: Long): ApiResult<Unit> {
+        return when (val result =
+            MovieServiceClient.getMovie(movieId).first() { it !is ApiResult.Loading }) {
+            is ApiResult.Success -> {
+                persistMovie(result.data)
+                ApiResult.Success(Unit)
+            }
+
+            is ApiResult.Failure -> result
+            else -> ApiResult.Failure(
+                ProblemDetails("Unknown", "Unexpected state", 500, "")
+            )
+        }
+    }
+
+    private suspend fun persistMovies(apiMovies: List<MovieSimple>) {
+        val userId: Long? = null
+
+        val movies = apiMovies.map {
+            MovieEntity(
+                id = it.id.toLong(),
+                title = it.title,
+                synopsis = it.synopsis,
+                releaseDate = it.releaseDate,
+                directorId = it.director?.personId?.toLong(),
+                rating = it.rating,
+                minimumAge = null,
+                createdAt = it.createdAt,
+                updatedAt = it.updatedAt
+            )
+        }
+
+        movieDao.upsertMovies(movies)
+
+        genreDao.upsertGenres(
+            apiMovies.flatMap { it.genres }.distinct()
+            .map { GenreEntity(it, description = null, averageRating = 0f) })
+
+        movieDao.upsertGenres(
+            apiMovies.flatMap { movie ->
+                movie.genres.map { MovieGenreCrossRef(movie.id.toLong(), it) }
+            })
+
+
+        movieDao.upsertPictures(
+            apiMovies.mapNotNull { movie ->
+                movie.mainPicture?.let {
+                    PictureEntity(
+                        id = it.id.toLong(),
+                        movieId = movie.id.toLong(),
+                        filename = it.filename,
+                        contentType = it.contentType,
+                        mainPicture = it.mainPicture,
+                        description = it.description
+                    )
+                }
+            })
+
+        if (userId != null) {
+            movieDao.addFavorites(apiMovies.filter { it.favorite }
+                .map { UserFavoriteEntity(userId, it.id.toLong()) })
+        }
+
+        personDao.upsertPersons(apiMovies.mapNotNull { it.director }.distinctBy { it.personId }
+            .map { PersonEntity(it.personId.toLong(), it.name, dateOfBirth = null) })
+    }
+
+    private suspend fun persistMovie(apiMovie: MovieDetail) {
+        val userId: Long? = null
+
+        val movie = MovieEntity(
+            id = apiMovie.id.toLong(),
+            title = apiMovie.title,
+            synopsis = apiMovie.synopsis,
+            releaseDate = apiMovie.releaseDate,
+            directorId = apiMovie.director?.personId?.toLong(),
+            rating = apiMovie.rating?.average,
+            minimumAge = apiMovie.minimumAge,
+            createdAt = apiMovie.createdAt,
+            updatedAt = apiMovie.updatedAt
+        )
+
+        movieDao.upsertMovie(movie)
+
+        genreDao.upsertGenres(
+            apiMovie.genres.distinct()
+                .map { GenreEntity(it.name, it.description, averageRating = 0f) })
+
+        movieDao.upsertGenres(apiMovie.genres.map { genre ->
+            MovieGenreCrossRef(
+                apiMovie.id.toLong(), genre.name
+            )
+        })
+
+        val director = apiMovie.director?.let {
+            PersonEntity(
+                it.personId.toLong(), it.name, dateOfBirth = null
+            )
+        }
+        if (director != null) {
+            personDao.upsertPerson(director)
+        }
+        personDao.upsertPersons(
+            apiMovie.cast.distinct().map {
+                PersonEntity(
+                    id = it.personId.toLong(), name = it.name, dateOfBirth = null
+                )
+            })
+
+
+        movieDao.upsertCast(apiMovie.cast.map { cast ->
+            CastMemberEntity(apiMovie.id.toLong(), cast.personId.toLong(), cast.character)
+        })
+
+        movieDao.upsertPictures(apiMovie.pictures.distinct().map {
+            PictureEntity(
+                it.id.toLong(),
+                apiMovie.id.toLong(),
+                it.filename,
+                it.contentType,
+                it.mainPicture,
+                it.description
+            )
+        })
+
+        if (userId != null && apiMovie.favorite) {
+            movieDao.addFavorite(UserFavoriteEntity(0, apiMovie.id.toLong()))
+        }
+
+        if (userId != null && apiMovie.userRating != null) {
+            movieDao.upsertRating(
+                UserRatingEntity(
+                    0, apiMovie.id.toLong(), apiMovie.userRating.rating, apiMovie.userRating.comment
+                )
+            )
+        }
+    }
+
+    suspend fun toggleFavorite(movieId: Long, favorite: Boolean) {
+        val userId: Long? = null
+
+        if (userId != null) {
+            if (favorite) {
+                movieDao.addFavorite(UserFavoriteEntity(userId, movieId))
+            } else {
+                movieDao.removeFavorite(userId, movieId)
+            }
+            MovieServiceClient.markAsFavorite(movieId, favorite)
+        }
+    }
+
+    suspend fun isFavorite(movieId: Long): Boolean? {
+        val userId: Long? = null
+
+        if (userId != null) {
+            return movieDao.isFavorite(movieId, userId)
+        }
+
+        return null
+    }
+
+//    suspend fun rateMovie(
+//        userId: Int,
+//        movieId: Int,
+//        rating: Int,
+//        comment: String?
+//    ) {
+//        dao.upsertRating(
+//            UserRatingEntity(
+//                userId = userId,
+//                movieId = movieId,
+//                rating = rating.coerceIn(0..5),
+//                comment = comment,
+//            )
+//        )
+//
+//        MovieServiceClient.rateMovie(movieId, rating, comment)
+//    }
+//
+//    suspend fun deleteRating(movieId: Int) {
+//        dao.deleteUserRating(movieId)
+//        MovieServiceClient.deleteRating(movieId)
+//        refreshSingleMovie(movieId)
+//    }
+//
+//    fun getMovieRatings(movieId: Int): Flow<ApiResult<List<MovieRatingResponse>>> =
+//        MovieServiceClient.getRatings(movieId)
+
 }
+
+//data class MovieDetailsManual(
+//    val movie: Movie,
+//    val pictures: List<MoviePicture>,
+//    val genres: List<Genre>,
+//    val persons: List<Person>
+//) {
+//    companion object {
+//        fun empty() = MovieDetailsManual(
+//            movie = Movie(0, "", "", 0, null, Instant.DISTANT_PAST, null),
+//            pictures = emptyList(),
+//            genres = emptyList(),
+//            persons = emptyList()
+//        )
+//    }
+//}

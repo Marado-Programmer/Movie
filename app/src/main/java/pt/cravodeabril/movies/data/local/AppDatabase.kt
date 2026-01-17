@@ -5,30 +5,31 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import pt.cravodeabril.movies.data.local.dao.GenreDao
 import pt.cravodeabril.movies.data.local.dao.MovieDao
-import pt.cravodeabril.movies.data.local.entity.CastMember
-import pt.cravodeabril.movies.data.local.entity.Genre
-import pt.cravodeabril.movies.data.local.entity.Movie
-import pt.cravodeabril.movies.data.local.entity.MovieGenre
-import pt.cravodeabril.movies.data.local.entity.MoviePicture
-import pt.cravodeabril.movies.data.local.entity.Person
+import pt.cravodeabril.movies.data.local.dao.PersonDao
+import pt.cravodeabril.movies.data.local.entity.CastMemberEntity
+import pt.cravodeabril.movies.data.local.entity.GenreEntity
+import pt.cravodeabril.movies.data.local.entity.MovieEntity
+import pt.cravodeabril.movies.data.local.entity.MovieGenreCrossRef
+import pt.cravodeabril.movies.data.local.entity.PersonEntity
+import pt.cravodeabril.movies.data.local.entity.PictureEntity
+import pt.cravodeabril.movies.data.local.entity.UserEntity
+import pt.cravodeabril.movies.data.local.entity.UserFavoriteEntity
+import pt.cravodeabril.movies.data.local.entity.UserRatingEntity
 import pt.cravodeabril.movies.utils.InstantConverter
+import pt.cravodeabril.movies.utils.LocalDateConverter
 
 @Database(
-    entities = [
-        Movie::class,
-        MoviePicture::class,
-        Genre::class,
-        MovieGenre::class,
-        Person::class,
-        CastMember::class
-    ],
+    entities = [MovieEntity::class, PictureEntity::class, MovieGenreCrossRef::class, CastMemberEntity::class, UserRatingEntity::class, UserFavoriteEntity::class, GenreEntity::class, PersonEntity::class, UserEntity::class],
     version = 1,
     exportSchema = false
 )
-@TypeConverters(InstantConverter::class)
+@TypeConverters(InstantConverter::class, LocalDateConverter::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun movieDao(): MovieDao
+    abstract fun genreDao(): GenreDao
+    abstract fun personDao(): PersonDao
 
     companion object {
         @Volatile

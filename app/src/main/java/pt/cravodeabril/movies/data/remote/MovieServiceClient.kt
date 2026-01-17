@@ -8,6 +8,7 @@ import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.basicAuth
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
+import io.ktor.client.request.put
 import io.ktor.http.ContentType
 import io.ktor.http.URLProtocol
 import io.ktor.http.contentType
@@ -15,11 +16,13 @@ import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import pt.cravodeabril.movies.data.ApiResult
 import pt.cravodeabril.movies.data.ProblemDetails
-import pt.cravodeabril.movies.data.local.entity.Movie
+import java.io.File
+import java.io.FileOutputStream
 import kotlin.time.Instant
 
 object MovieServiceClient {
@@ -60,24 +63,40 @@ object MovieServiceClient {
     }
 
     fun getMovies(
-        order: String = "desc",
-        sortBy: String = "releaseDate",
-        title: String? = null,
+        offset: Long = 0,
+        count: Int = Int.MAX_VALUE,
+        director: Int? = null,
         genre: String? = null,
-        favoritesOnly: Boolean = false
-    ): Flow<ApiResult<List<MovieQueryResponse>>> = flow {
+        title: String? = null,
+        fromReleaseDate: LocalDate? = null,
+        toReleaseDate: LocalDate? = null,
+        fromRating: Int = 0,
+        toRating: Int = 5,
+        favoritesOnly: Boolean = false,
+        sortBy: String = "releaseDate",
+        sortOrder: String = "desc",
+    ): Flow<ApiResult<List<MovieSimple>>> = flow {
         emit(ApiResult.Loading)
         try {
             val response = client.get("/movies") {
-                parameter("sortOrder", order)
-                parameter("sortBy", sortBy)
-                title?.let { parameter("title", it) }
+                parameter("offset", offset)
+                parameter("count", count)
+                director?.let { parameter("director", it) }
                 genre?.let { parameter("genre", it) }
+                title?.let { parameter("title", it) }
+                fromReleaseDate?.let { parameter("fromReleaseDate", it) }
+                toReleaseDate?.let { parameter("toReleaseDate", it) }
+                parameter("fromRating", fromRating)
+                parameter("toRating", toRating)
                 parameter("favoritesOnly", favoritesOnly)
+                parameter("sortBy", sortBy)
+                parameter("sortOrder", sortOrder)
             }
-
-            if (response.status.isSuccess()) emit(ApiResult.Success(response.body()))
-            else emit(ApiResult.Failure(response.body()))
+            if (response.status.isSuccess()) {
+                emit(ApiResult.Success(response.body()))
+            } else {
+                emit(ApiResult.Failure(response.body()))
+            }
         } catch (e: Exception) {
             emit(
                 ApiResult.Failure(
@@ -92,95 +111,129 @@ object MovieServiceClient {
         }
     }
 
+    fun getMovie(movieId: Long): Flow<ApiResult<MovieDetail>> = flow {
+        emit(ApiResult.Loading)
+        try {
+            val response = client.get("/movies/$movieId")
+            if (response.status.isSuccess()) {
+                emit(ApiResult.Success(response.body()))
+            } else {
+                emit(ApiResult.Failure(response.body()))
+            }
+        } catch (e: Exception) {
+            emit(
+                ApiResult.Failure(
+                    ProblemDetails(
+                        type = "Network",
+                        title = "Network error",
+                        status = 500,
+                        detail = e.message ?: "Unknown"
+                    )
+                )
+            )
+        }
+    }
+
+    suspend fun getMoviePicture(movieId: Long, pictureId: Long): Flow<ApiResult<FileRepresentation>>? {
+        val response = client.get("/movies/$movieId/pictures/$pictureId")
+        val bytes = response.body<ByteArray>()
+        // FileOutputStream(file).use { it.write(bytes) }
+        return null
+    }
+
     fun getMovieRatings(
-        movieId: Int,
-        sortBy: String = "desc",
-        excludeUser: Int? = null
-    ): Flow<ApiResult<List<MovieRatingResponse>>> = flow {
+        movieId: Long, sortBy: String = "desc", excludeUser: Int? = null
+    ): Flow<ApiResult<List<MovieRating>>> = flow {
         emit(ApiResult.Loading)
         try {
             val response = client.get("/movies/$movieId/ratings") {
                 parameter("sortBy", sortBy)
                 excludeUser?.let { parameter("excludeUser", it) }
             }
-
-            if (response.status.isSuccess()) emit(ApiResult.Success(response.body()))
-            else emit(ApiResult.Failure(response.body()))
+            if (response.status.isSuccess()) {
+                emit(ApiResult.Success(response.body()))
+            } else {
+                emit(ApiResult.Failure(response.body()))
+            }
         } catch (e: Exception) {
-            emit(ApiResult.Failure(
-                ProblemDetails(
-                    type = "Network",
-                    title = "Network error",
-                    status = 500,
-                    detail = e.message ?: "Unknown"
+            emit(
+                ApiResult.Failure(
+                    ProblemDetails(
+                        type = "Network",
+                        title = "Network error",
+                        status = 500,
+                        detail = e.message ?: "Unknown"
+                    )
                 )
-            ))
+            )
+        }
+    }
+
+    suspend fun markAsFavorite(movieId: Long, value: Boolean) {
+        client.put("/movies/$movieId/mark-as-favorite") {
+            parameter("value", value)
         }
     }
 }
 
+data class Credentials(
+    val username: String, val password: String
+)
 
-@Serializable
-data class MovieQueryResponse(
+data class MovieSimple(
     val id: Int,
     val title: String,
     val synopsis: String,
-    val genres: List<String>,
-    val releaseDate: String,
-    val director: PersonResponse?,
-    val mainPicture: PictureResponse?,
-    val rating: Double,
+    val genres: Set<String>,
+    val releaseDate: LocalDate,
+    val mainPicture: PictureInfo?,
     val favorite: Boolean,
-    val createdAt: String,
-    val updatedAt: String?
+    val director: Director?,
+    val rating: Float?,
+    val createdAt: Instant,
+    val updatedAt: Instant?,
 )
 
+data class Director(val personId: Int, val name: String, val picture: PictureInfo?)
 
-@Serializable
-data class PictureResponse(
+data class PictureInfo(
     val id: Int,
-    val url: String,
     val filename: String,
     val contentType: String,
-    val description: String?,
-    val mainPicture: Boolean
+    val mainPicture: Boolean,
+    val description: String?
 )
+
+data class MovieDetail(
+    val id: Int,
+    val title: String,
+    val synopsis: String,
+    val genres: Set<Genre>,
+    val releaseDate: LocalDate,
+    val director: Director?,
+    val pictures: List<PictureInfo>,
+    val rating: Rating?,
+    val favorite: Boolean,
+    val userRating: UserRating?,
+    val minimumAge: Int,
+    val createdAt: Instant,
+    val updatedAt: Instant?,
+    val cast: List<CastMember>,
+)
+
+data class Genre(val id: Int, val name: String, val description: String?)
 
 @Serializable
-data class PersonResponse(
-    val id: Int, val name: String
-)
-
-fun MovieQueryResponse.toEntity() = Movie(
-    id = id.toLong(),
-    title = title,
-    synopsis = synopsis,
-    minimumAge = 0, // TODO: get from actual API response or default
-    director = director?.id?.toLong(), // ← extract ID from PersonResponse
-    createdAt = try {
-        Instant.parse(createdAt)
-    } catch (_: Exception) {
-        Instant.DISTANT_PAST
-    },
-    updatedAt = updatedAt?.let {
-        try {
-            Instant.parse(it)
-        } catch (_: Exception) {
-            null
-        }
-    })
-
-data class Credentials(
-    val username: String,
-    val password: String
-)
+data class Rating(val average: Float, val buckets: List<RatingBucket>)
 
 @Serializable
-data class MovieRatingResponse(
-    val movieId: Int,
-    val userId: Int,
-    val score: Int,
-    val comment: String?
-)
+data class RatingBucket(val rating: Int, val count: Int)
 
+data class UserRating(val rating: Int, val comment: String?)
 
+data class CastMember(val personId: Int, val name: String, val character: String)
+
+class FileRepresentation(val file: File, val filename: String, val contentType: String)
+
+@Serializable
+data class MovieRating(val movieId: Int, val userId: Int, val score: Int, val comment: String?)

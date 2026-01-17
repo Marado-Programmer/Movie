@@ -9,8 +9,9 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import coil3.request.target
 import pt.cravodeabril.movies.R
+import pt.cravodeabril.movies.data.ApiResult
 import pt.cravodeabril.movies.data.createCoilImageLoader
-import pt.cravodeabril.movies.data.repository.MovieDetailsManual
+import pt.cravodeabril.movies.data.local.entity.MovieWithDetails
 import pt.cravodeabril.movies.databinding.FragmentMovieDetailsBinding
 
 class MovieDetailsFragment : Fragment(R.layout.fragment_movie_details) {
@@ -25,11 +26,18 @@ class MovieDetailsFragment : Fragment(R.layout.fragment_movie_details) {
         super.onViewCreated(view, savedInstanceState)
         _binding = FragmentMovieDetailsBinding.bind(view)
 
-        viewModel.loadMovieDetails(args.movieId)
-        viewModel.loadRatings(args.movieId)
+        viewModel.observeMovie(args.movieId)
 
-        viewModel.movieDetails.observe(viewLifecycleOwner) { movie ->
-            bindMovie(movie)
+        viewModel.movie.observe(viewLifecycleOwner) { state ->
+            when (state) {
+                is ApiResult.Loading -> {}
+                is ApiResult.Success -> {
+                    bindMovie(state.data)
+                }
+                is ApiResult.Failure -> {
+                    // showError(state.message)
+                }
+            }
         }
 
 //        viewModel.ratings.observe(viewLifecycleOwner) { ratings ->
@@ -43,7 +51,7 @@ class MovieDetailsFragment : Fragment(R.layout.fragment_movie_details) {
 //        }
 
         binding.favoriteButton.setOnClickListener {
-            viewModel.toggleFavorite(args.movieId)
+            viewModel.toggleFavorite()
         }
 
         binding.rateButton.setOnClickListener {
@@ -54,18 +62,17 @@ class MovieDetailsFragment : Fragment(R.layout.fragment_movie_details) {
         }
     }
 
-    private fun bindMovie(movieWithPictures: MovieDetailsManual?) {
-        movieWithPictures ?: return
-        val movie = movieWithPictures.movie
+    private fun bindMovie(movie: MovieWithDetails?) {
+        movie ?: return
 
-        binding.movieTitle.text = movie.title
-        binding.movieSynopsis.text = movie.synopsis
-        binding.movieDirector.text = getString(R.string.movie_director, movie.director ?: "Unknown")
-        binding.movieGenres.text = movieWithPictures.genres.joinToString(", ")
-        binding.movieAge.text = getString(R.string.movie_age, movie.minimumAge)
-        val mainPicture = movieWithPictures.pictures.firstOrNull { it.mainPicture }
+        binding.movieTitle.text = movie.movie.title
+        binding.movieSynopsis.text = movie.movie.synopsis
+        binding.movieDirector.text = getString(R.string.movie_director, movie.movie.directorId ?: "Unknown")
+        binding.movieGenres.text = movie.genres.joinToString(", ")
+        binding.movieAge.text = getString(R.string.movie_age, movie.movie.minimumAge)
+        val mainPicture = movie.pictures.firstOrNull { it.mainPicture }
         mainPicture?.let {
-            val posterUrl = "http://10.0.2.2:8080/movies/${movie.id}/pictures/${it.id}"
+            val posterUrl = "http://10.0.2.2:8080/movies/${movie.movie.id}/pictures/${it.id}"
             val imageLoader = createCoilImageLoader(binding.root.context)
             val request = ImageRequest.Builder(binding.root.context)
                 .data(posterUrl)

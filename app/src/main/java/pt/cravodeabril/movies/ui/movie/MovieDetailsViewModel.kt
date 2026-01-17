@@ -7,58 +7,46 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 import pt.cravodeabril.movies.data.ApiResult
+import pt.cravodeabril.movies.data.ProblemDetails
 import pt.cravodeabril.movies.data.local.AppDatabase
-import pt.cravodeabril.movies.data.remote.MovieRatingResponse
-import pt.cravodeabril.movies.data.repository.MovieDetailsManual
+import pt.cravodeabril.movies.data.local.entity.MovieWithDetails
+import pt.cravodeabril.movies.data.local.entity.UserRatingEntity
 import pt.cravodeabril.movies.data.repository.MovieRepository
 
 class MovieDetailsViewModel(app: Application) : AndroidViewModel(app) {
     private val db = AppDatabase(app)
-    private val repository = MovieRepository(db.movieDao())
+    private val repository = MovieRepository(db.movieDao(), db.genreDao(), db.personDao())
 
-    private val _movieDetails = MutableLiveData<MovieDetailsManual?>()
-    val movieDetails: LiveData<MovieDetailsManual?> = _movieDetails
+    private val _movie = MutableLiveData<ApiResult<MovieWithDetails>>()
+    val movie: LiveData<ApiResult<MovieWithDetails>> = _movie
 
-    private val _ratings = MutableLiveData<List<MovieRatingResponse>>()
-    val ratings: LiveData<List<MovieRatingResponse>> = _ratings
-
-    private val _ratingsLoading = MutableLiveData<Boolean>(false)
-    val ratingsLoading: LiveData<Boolean> = _ratingsLoading
-
-    fun loadMovieDetails(movieId: Long) {
+    fun observeMovie(id: Long) {
         viewModelScope.launch {
-            _movieDetails.postValue(repository.getMovieWithDetailsById(movieId))
-        }
-    }
-
-    fun loadRatings(movieId: Long) {
-        viewModelScope.launch {
-            _ratingsLoading.postValue(true)
-            try {
-                repository.fetchMovieRatings(movieId).collect { result ->
-                    when (result) {
-                        is ApiResult.Success -> {
-                            _ratings.postValue(result.data)
-                            _ratingsLoading.postValue(false)
-                        }
-
-                        is ApiResult.Loading -> _ratingsLoading.postValue(true)
-                        is ApiResult.Failure -> {
-                            _ratings.postValue(emptyList())
-                            _ratingsLoading.postValue(false)
-                        }
-                    }
-                }
-            } catch (_: Exception) {
-                _ratings.postValue(emptyList())
-                _ratingsLoading.postValue(false)
+            val movie = repository.observeMovie(id)
+            if (movie != null) {
+                _movie.postValue(ApiResult.Success(movie))
+            } else {
+                _movie.postValue(ApiResult.Failure(ProblemDetails("404", "", 404, "")))
             }
         }
     }
 
-    fun toggleFavorite(movieId: Long) {
+    fun refresh(id: Long) {
         viewModelScope.launch {
-            // TODO: PUT /movies/{id}/mark-as-favorite
+            when (val result = repository.refreshMovie(id)) {
+                is ApiResult.Failure -> _movie.postValue(ApiResult.Failure(result.error))
+                else -> Unit
+            }
+        }
+    }
+
+    fun toggleFavorite() {
+        val result = movie.value
+        if (result is ApiResult.Success) {
+            val id = result.data.movie.id
+            viewModelScope.launch {
+                repository.isFavorite(id)?.let { toggle -> repository.toggleFavorite(id, toggle) }
+            }
         }
     }
 }
