@@ -48,7 +48,7 @@ class LoginFragment : Fragment(R.layout.fragment_login) {
     private fun goToMain() {
         findNavController()
             .navigate(
-                LoginFragmentDirections.actionLoginFragmentToMovieFragment(),
+                // LoginFragmentDirections.actionLoginFragmentToMovieFragment(),
                 NavOptions.Builder().apply {
                     this.setPopUpTo(R.id.loginFragment, true)
                 }.build()

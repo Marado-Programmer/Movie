@@ -37,7 +37,7 @@ class MovieListFragment : Fragment(R.layout.fragment_movie_list) {
     override fun onStart() {
         super.onStart()
         viewModel.observeMovies(
-            args.titleFilter.ifBlank { "" },
+            args.filter ?: "",
 //            genre = args.genreFilter.ifBlank { null },
 //            sortBy = args.sortBy.ifBlank { "releaseDate" },
 //            sortOrder = args.sortOrder.ifBlank { "desc" },
@@ -91,7 +91,7 @@ class MovieListFragment : Fragment(R.layout.fragment_movie_list) {
             when (menuItem.itemId) {
                 R.id.logout -> {
                     findNavController().navigate(
-                        MovieListFragmentDirections.actionMovieListFragmentToLoginFragment(),
+                        // MovieListFragmentDirections.actionMovieListFragmentToLoginFragment(),
                         NavOptions.Builder().apply {
                             this.setPopUpTo(R.id.movieListFragment, true)
                         }.build()
@@ -104,10 +104,6 @@ class MovieListFragment : Fragment(R.layout.fragment_movie_list) {
         }
     }
 
-    /**
-     * [androidx.recyclerview.widget.RecyclerView.Adapter] that can display a [pt.cravodeabril.movies.placeholder.PlaceholderContent.PlaceholderItem].
-     * TODO: Replace the implementation with code for your data type.
-     */
     inner class ListAdapter :
         androidx.recyclerview.widget.ListAdapter<MovieWithDetails, ListAdapter.ViewHolder>(
             diffCallbackOf(idSelector = { it.movie.id })

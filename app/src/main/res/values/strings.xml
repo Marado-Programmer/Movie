@@ -27,4 +27,12 @@
     <string name="movie_director">Directed by %s</string>
     <string name="movie_release">Release: %1$s</string>
     <string name="movie_rating">%1$s (%2$d ratings)</string>
+    <string name="movie_create_and_edit">Movie creation and edition</string>
+    <string name="synopsis">Synopsis</string>
+    <string name="release_date">Release date</string>
+    <string name="minimum_age">Minimum age</string>
+    <string name="genres">Genres</string>
+    <string name="add_picture">Add picture</string>
+    <string name="save">Save</string>
+    <string name="delete">Delete</string>
 </resources>

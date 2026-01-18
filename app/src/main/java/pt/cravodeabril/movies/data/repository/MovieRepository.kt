@@ -1,5 +1,6 @@
 package pt.cravodeabril.movies.data.repository
 
+import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -19,9 +20,13 @@ import pt.cravodeabril.movies.data.local.entity.PersonEntity
 import pt.cravodeabril.movies.data.local.entity.PictureEntity
 import pt.cravodeabril.movies.data.local.entity.UserFavoriteEntity
 import pt.cravodeabril.movies.data.local.entity.UserRatingEntity
+import pt.cravodeabril.movies.data.remote.CreateMovieCommand
+import pt.cravodeabril.movies.data.remote.CreatePicture
 import pt.cravodeabril.movies.data.remote.MovieDetail
 import pt.cravodeabril.movies.data.remote.MovieServiceClient
 import pt.cravodeabril.movies.data.remote.MovieSimple
+import pt.cravodeabril.movies.data.remote.RoleAssignment
+import pt.cravodeabril.movies.data.remote.UpdateMovieCommand
 import kotlin.math.roundToInt
 
 class MovieRepository(
@@ -37,15 +42,20 @@ class MovieRepository(
         rating: IntRange? = null,
         favorites: Long? = null,
         sortBy: String = "releaseDate"
-    ): Flow<List<MovieWithDetails>> = movieDao.observeMovies(sortBy).map { movies ->
-        movies.filter {
-            it.movie.title.contains(
-                query, true
-            ) || it.movie.synopsis.contains(query, true)
-        }.filter { genres.isEmpty() || it.genres.any { g -> g.name in genres } }
-            .filter { date == null || date.contains(it.movie.releaseDate) }
-            .filter { rating == null || (it.movie.rating != null && rating.contains(it.movie.rating.roundToInt())) }
-            .filter { favorites == null || movieDao.isFavorite(it.movie.id, favorites) }
+    ): Flow<List<MovieWithDetails>> {
+        val movies =
+            if (favorites == null) movieDao.observeMovies(sortBy) else movieDao.observeFavoriteMovies(
+                favorites, sortBy
+            )
+        return movies.map { movies ->
+            movies.filter {
+                it.movie.title.contains(
+                    query, true
+                ) || it.movie.synopsis.contains(query, true)
+            }.filter { genres.isEmpty() || it.genres.any { g -> g.name in genres } }
+                .filter { date == null || date.contains(it.movie.releaseDate) }
+                .filter { rating == null || (it.movie.rating != null && rating.contains(it.movie.rating.roundToInt())) }
+        }
     }
 
     suspend fun refreshMovies(
@@ -105,6 +115,7 @@ class MovieRepository(
         }
     }
 
+    @Transaction
     private suspend fun persistMovies(apiMovies: List<MovieSimple>) {
         val userId: Long? = null
 
@@ -124,14 +135,36 @@ class MovieRepository(
 
         movieDao.upsertMovies(movies)
 
-        genreDao.upsertGenres(
-            apiMovies.flatMap { it.genres }.distinct()
-            .map { GenreEntity(it, description = null, averageRating = 0f) })
+//        genreDao.upsertGenres(
+//            apiMovies.flatMap { it.genres }.distinct()
+//            .map { GenreEntity(null, it, description = null, averageRating = 0f) })
+//
+//        movieDao.upsertGenres(
+//            apiMovies.flatMap { movie ->
+//                movie.genres.map { MovieGenreCrossRef(movie.id.toLong(), it) }
+//            })
 
-        movieDao.upsertGenres(
-            apiMovies.flatMap { movie ->
-                movie.genres.map { MovieGenreCrossRef(movie.id.toLong(), it) }
-            })
+//        genreDao.upsertGenres(
+//            apiMovies.flatMap { it.genres }.distinct()
+//                .map {
+//                    GenreEntity(
+//                        name = it,
+//                        description = null,
+//                        averageRating = 0f,
+//                    )
+//                }
+//        )
+//
+//        movieDao.upsertGenres(
+//            apiMovies.flatMap { movie ->
+//                movie.genres.map {
+//                    MovieGenreCrossRef(
+//                        movieId = movie.id.toLong(),
+//                        genreId = it.id.toLong()
+//                    )
+//                }
+//            }
+//        )
 
 
         movieDao.upsertPictures(
@@ -157,6 +190,7 @@ class MovieRepository(
             .map { PersonEntity(it.personId.toLong(), it.name, dateOfBirth = null) })
     }
 
+    @Transaction
     private suspend fun persistMovie(apiMovie: MovieDetail) {
         val userId: Long? = null
 
@@ -174,13 +208,19 @@ class MovieRepository(
 
         movieDao.upsertMovie(movie)
 
-        genreDao.upsertGenres(
-            apiMovie.genres.distinct()
-                .map { GenreEntity(it.name, it.description, averageRating = 0f) })
+        genreDao.upsertGenres(apiMovie.genres.distinctBy { it.id }.map {
+            GenreEntity(
+                id = it.id.toLong(),
+                name = it.name,
+                description = it.description,
+                averageRating = 0f
+            )
+        })
 
-        movieDao.upsertGenres(apiMovie.genres.map { genre ->
+        movieDao.upsertGenres(apiMovie.genres.map {
             MovieGenreCrossRef(
-                apiMovie.id.toLong(), genre.name
+                movieId = apiMovie.id.toLong(),
+                genreId = it.id.toLong()
             )
         })
 
@@ -251,47 +291,91 @@ class MovieRepository(
         return null
     }
 
-//    suspend fun rateMovie(
-//        userId: Int,
-//        movieId: Int,
-//        rating: Int,
-//        comment: String?
-//    ) {
-//        dao.upsertRating(
-//            UserRatingEntity(
-//                userId = userId,
-//                movieId = movieId,
-//                rating = rating.coerceIn(0..5),
-//                comment = comment,
-//            )
-//        )
-//
-//        MovieServiceClient.rateMovie(movieId, rating, comment)
-//    }
-//
-//    suspend fun deleteRating(movieId: Int) {
-//        dao.deleteUserRating(movieId)
-//        MovieServiceClient.deleteRating(movieId)
-//        refreshSingleMovie(movieId)
-//    }
-//
-//    fun getMovieRatings(movieId: Int): Flow<ApiResult<List<MovieRatingResponse>>> =
-//        MovieServiceClient.getRatings(movieId)
+    suspend fun createMovie(
+        title: String,
+        synopsis: String,
+        releaseDate: LocalDate,
+        minimumAge: Int,
+        genres: Set<Int>,
+        directorId: Long?,
+        cast: List<RoleAssignment> = emptyList(),
+        pictures: List<CreatePicture> = emptyList()
+    ): ApiResult<MovieDetail> {
 
+        val command = CreateMovieCommand(
+            title = title,
+            synopsis = synopsis,
+            cast = cast,
+            pictures = pictures,
+            genres = genres,
+            directorId = directorId?.toInt(),
+            releaseDate = releaseDate,
+            minimumAge = minimumAge
+        )
+
+        return when (val result = MovieServiceClient.createMovie(command)) {
+            is ApiResult.Success -> {
+                persistMovie(result.data)
+                ApiResult.Success(result.data)
+            }
+
+            is ApiResult.Failure -> result
+
+            else -> ApiResult.Failure(
+                ProblemDetails("Unknown", "Unexpected state", 500, "")
+            )
+        }
+    }
+
+    suspend fun updateMovie(
+        id: Long,
+        title: String,
+        synopsis: String,
+        releaseDate: LocalDate,
+        minimumAge: Int,
+        genres: Set<Int>,
+        directorId: Long?
+    ): ApiResult<MovieDetail> {
+
+        val command = UpdateMovieCommand(
+            id = id.toInt(),
+            title = title,
+            synopsis = synopsis,
+            genres = genres,
+            directorId = directorId?.toInt(),
+            releaseDate = releaseDate,
+            minimumAge = minimumAge
+        )
+
+        return when (val result = MovieServiceClient.updateMovie(command)) {
+            is ApiResult.Success -> {
+                persistMovie(result.data)
+                ApiResult.Success(result.data)
+            }
+
+            is ApiResult.Failure -> result
+
+            else -> ApiResult.Failure(
+                ProblemDetails("Unknown", "Unexpected state", 500, "")
+            )
+        }
+    }
+
+    suspend fun deleteMovie(movieId: Long): ApiResult<Unit> {
+        return when (val result = MovieServiceClient.deleteMovie(movieId)) {
+            is ApiResult.Success -> {
+                movieDao.deleteCastByMovie(movieId)
+                movieDao.deletePicturesByMovie(movieId)
+                movieDao.clearMovieGenres(movieId)
+                movieDao.deleteMovie(movieId)
+                ApiResult.Success(Unit)
+            }
+
+            is ApiResult.Failure -> result
+
+            else -> ApiResult.Failure(
+                ProblemDetails("Unknown", "Unexpected state", 500, "")
+            )
+        }
+    }
 }
-
-//data class MovieDetailsManual(
-//    val movie: Movie,
-//    val pictures: List<MoviePicture>,
-//    val genres: List<Genre>,
-//    val persons: List<Person>
-//) {
-//    companion object {
-//        fun empty() = MovieDetailsManual(
-//            movie = Movie(0, "", "", 0, null, Instant.DISTANT_PAST, null),
-//            pictures = emptyList(),
-//            genres = emptyList(),
-//            persons = emptyList()
-//        )
-//    }
-//}

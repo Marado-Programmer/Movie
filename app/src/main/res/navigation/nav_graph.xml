@@ -9,24 +9,21 @@
         android:id="@+id/loginFragment"
         android:name="pt.cravodeabril.movies.ui.LoginFragment"
         android:label="fragment_login"
-        tools:layout="@layout/fragment_login">
-        <action
-            android:id="@+id/action_loginFragment_to_movieFragment"
-            app:destination="@id/movieListFragment" />
-    </fragment>
+        tools:layout="@layout/fragment_login"/>
     <fragment
         android:id="@+id/movieListFragment"
         android:name="pt.cravodeabril.movies.ui.movie.MovieListFragment"
         android:label="@string/movies"
         tools:layout="@layout/fragment_movie_list">
         <argument
-            android:name="titleFilter"
-            android:defaultValue=""
-            app:argType="string" />
+            android:name="filter"
+            app:argType="string"
+            app:nullable="true" />
         <argument
-            android:name="genreFilter"
-            android:defaultValue=""
-            app:argType="string" />
+            android:name="genre"
+            app:argType="string[]"
+            app:nullable="true"
+            android:defaultValue="@null" />
         <argument
             android:name="sortBy"
             android:defaultValue="releaseDate"
@@ -47,10 +44,8 @@
                 app:argType="long" />
         </action>
         <action
-            android:id="@+id/action_movieListFragment_to_loginFragment"
-            app:destination="@id/loginFragment"
-            app:popUpTo="@id/movieListFragment"
-            app:popUpToInclusive="true" />
+            android:id="@+id/action_movieListFragment_to_movieCreateFragment"
+            app:destination="@id/movieUpsertFragment" />
         <deepLink app:uri="movies://movies?genre={genreFilter}&amp;title={titleFilter}" />
     </fragment>
     <fragment
@@ -68,7 +63,7 @@
             app:popUpToInclusive="false" />
         <action
             android:id="@+id/action_movieDetailsFragment_to_movieEditFragment"
-            app:destination="@id/movieEditFragment">
+            app:destination="@id/movieUpsertFragment">
             <argument
                 android:name="movieId"
                 app:argType="long" />
@@ -76,12 +71,20 @@
         <deepLink app:uri="movies://movies/{movieId}" />
     </fragment>
     <fragment
-        android:id="@+id/movieEditFragment"
-        android:name="pt.cravodeabril.movies.ui.movie.MovieDetailsFragment"
-        android:label="@string/movie_edit"
-        tools:layout="@layout/fragment_movie_edit">
+        android:id="@+id/movieUpsertFragment"
+        android:name="pt.cravodeabril.movies.ui.movie.MovieUpsertFragment"
+        android:label="@string/movie_create_and_edit"
+        tools:layout="@layout/fragment_movie_upsert">
         <argument
             android:name="movieId"
-            app:argType="long" />
+            app:argType="long"
+            android:defaultValue="-1L" />
+        <action
+            android:id="@+id/action_movieUpsertFragment_to_movieDetailsFragment"
+            app:destination="@id/movieDetailsFragment">
+            <argument
+                android:name="movieId"
+                app:argType="long" />
+        </action>
     </fragment>
 </navigation>

@@ -6,9 +6,12 @@ import io.ktor.client.engine.android.Android
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.basicAuth
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
+import io.ktor.client.request.post
 import io.ktor.client.request.put
+import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.URLProtocol
 import io.ktor.http.contentType
@@ -173,6 +176,52 @@ object MovieServiceClient {
             parameter("value", value)
         }
     }
+
+    suspend fun createMovie(cmd: CreateMovieCommand): ApiResult<MovieDetail> {
+        return try {
+            val response = client.post("/movies") {
+                setBody(cmd)
+            }
+            if (response.status.isSuccess())
+                ApiResult.Success(response.body())
+            else
+                ApiResult.Failure(response.body())
+        } catch (e: Exception) {
+            ApiResult.Failure(
+                ProblemDetails("Network", "Create failed", 500, e.message ?: "")
+            )
+        }
+    }
+
+    suspend fun updateMovie(cmd: UpdateMovieCommand): ApiResult<MovieDetail> {
+        return try {
+            val response = client.put("/movies") {
+                setBody(cmd)
+            }
+            if (response.status.isSuccess())
+                ApiResult.Success(response.body())
+            else
+                ApiResult.Failure(response.body())
+        } catch (e: Exception) {
+            ApiResult.Failure(
+                ProblemDetails("Network", "Update failed", 500, e.message ?: "")
+            )
+        }
+    }
+
+    suspend fun deleteMovie(movieId: Long): ApiResult<Unit> {
+        return try {
+            val response = client.delete("/movies/$movieId")
+            if (response.status.isSuccess())
+                ApiResult.Success(Unit)
+            else
+                ApiResult.Failure(response.body())
+        } catch (e: Exception) {
+            ApiResult.Failure(
+                ProblemDetails("Network", "Delete failed", 500, e.message ?: "")
+            )
+        }
+    }
 }
 
 data class Credentials(
@@ -236,3 +285,29 @@ class FileRepresentation(val file: File, val filename: String, val contentType: 
 
 @Serializable
 data class MovieRating(val movieId: Int, val userId: Int, val score: Int, val comment: String?)
+
+data class CreateMovieCommand(
+    val title: String,
+    val synopsis: String,
+    val cast: List<RoleAssignment>,
+    val pictures: List<CreatePicture>,
+    val genres: Set<Int>,
+    val directorId: Int?,
+    val releaseDate: LocalDate,
+    val minimumAge: Int,
+    val id: Int? = null
+)
+
+data class RoleAssignment(val personId: Int, val role: String)
+
+class CreatePicture(val filename: String, val data: ByteArray, val description: String? = null, val mainPicture: Boolean = false)
+
+data class UpdateMovieCommand(
+    val id: Int,
+    val title: String,
+    val synopsis: String,
+    val genres: Set<Int>,
+    val directorId: Int?,
+    val releaseDate: LocalDate,
+    val minimumAge: Int = 0
+)

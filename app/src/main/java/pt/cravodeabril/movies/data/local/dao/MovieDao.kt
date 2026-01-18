@@ -17,14 +17,30 @@ import pt.cravodeabril.movies.data.local.entity.UserRatingEntity
 @Dao
 interface MovieDao {
     @Transaction
-    @Query("""
+    @Query(
+        """
     SELECT * FROM movies
     ORDER BY
         CASE WHEN :sortBy = 'title' THEN title END COLLATE NOCASE,
         CASE WHEN :sortBy = 'rating' THEN rating END DESC,
         releaseDate DESC
-    """)
+    """
+    )
     fun observeMovies(sortBy: String): Flow<List<MovieWithDetails>>
+
+    @Transaction
+    @Query(
+        """
+    SELECT * FROM movies
+    JOIN user_favorites f ON f.movieId = movies.id
+    WHERE f.userId = :userId
+    ORDER BY
+        CASE WHEN :sortBy = 'title' THEN title END COLLATE NOCASE,
+        CASE WHEN :sortBy = 'rating' THEN rating END DESC,
+        releaseDate DESC
+    """
+    )
+    fun observeFavoriteMovies(userId: Long, sortBy: String): Flow<List<MovieWithDetails>>
 
     @Transaction
     @Query("SELECT * FROM movies WHERE id = :movieId")
@@ -36,8 +52,14 @@ interface MovieDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertMovie(movie: MovieEntity)
 
+    @Query("DELETE FROM movies WHERE id = :movieId")
+    suspend fun deleteMovie(movieId: Long)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertPictures(pictures: List<PictureEntity>)
+
+    @Query("DELETE FROM pictures WHERE movieId = :movieId")
+    suspend fun deletePicturesByMovie(movieId: Long)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertGenres(genres: List<MovieGenreCrossRef>)
@@ -46,14 +68,19 @@ interface MovieDao {
     suspend fun clearMovieGenres(movieId: Long)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsertCast(genres: List<CastMemberEntity>)
+    suspend fun upsertCast(cast: List<CastMemberEntity>)
 
-    @Query("""
+    @Query("DELETE FROM cast_members WHERE movieId = :movieId")
+    suspend fun deleteCastByMovie(movieId: Long)
+
+    @Query(
+        """
     SELECT EXISTS(
         SELECT 1 FROM user_favorites
         WHERE userId = :userId AND movieId = :movieId
     )
-    """)
+    """
+    )
     suspend fun isFavorite(movieId: Long, userId: Long): Boolean
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -65,10 +92,12 @@ interface MovieDao {
     @Query("DELETE FROM user_favorites WHERE userId = :userId AND movieId = :movieId")
     suspend fun removeFavorite(userId: Long, movieId: Long)
 
-    @Query("""
+    @Query(
+        """
     SELECT * FROM user_ratings
     WHERE userId = :userId AND movieId = :movieId
-    """)
+    """
+    )
     suspend fun getRating(movieId: Long, userId: Long): UserRatingEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
