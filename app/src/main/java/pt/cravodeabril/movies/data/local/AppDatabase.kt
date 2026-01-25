@@ -8,6 +8,7 @@ import androidx.room.TypeConverters
 import pt.cravodeabril.movies.data.local.dao.GenreDao
 import pt.cravodeabril.movies.data.local.dao.MovieDao
 import pt.cravodeabril.movies.data.local.dao.PersonDao
+import pt.cravodeabril.movies.data.local.dao.UserDao
 import pt.cravodeabril.movies.data.local.entity.CastMemberEntity
 import pt.cravodeabril.movies.data.local.entity.GenreEntity
 import pt.cravodeabril.movies.data.local.entity.MovieEntity
@@ -30,6 +31,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun movieDao(): MovieDao
     abstract fun genreDao(): GenreDao
     abstract fun personDao(): PersonDao
+    abstract fun userDao(): UserDao
 
     companion object {
         @Volatile

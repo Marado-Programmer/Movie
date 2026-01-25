@@ -2,26 +2,25 @@
 
 package pt.cravodeabril.movies.ui.movie
 
-import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDateRange
-import pt.cravodeabril.movies.data.ApiResult
-import pt.cravodeabril.movies.data.local.AppDatabase
+import pt.cravodeabril.movies.App
+import pt.cravodeabril.movies.data.Resource
 import pt.cravodeabril.movies.data.local.entity.MovieWithDetails
-import pt.cravodeabril.movies.data.repository.MovieRepository
 import kotlin.uuid.ExperimentalUuidApi
 
-class MovieListViewModel(app: Application) : AndroidViewModel(app) {
-    private val db = AppDatabase(app)
-    private val repository = MovieRepository(db.movieDao(), db.genreDao(), db.personDao())
+class MovieListViewModel(app: App) : AndroidViewModel(app) {
+    private val appContainer = app.container
+
+    private val repository = appContainer.movieRepository
 
     // TODO: StateFlow
-    private val _moviesFromApi = MutableLiveData<ApiResult<List<MovieWithDetails>>>()
-    val movies: LiveData<ApiResult<List<MovieWithDetails>>> = _moviesFromApi
+    private val _moviesFromApi = MutableLiveData<Resource<List<MovieWithDetails>>>()
+    val movies: LiveData<Resource<List<MovieWithDetails>>> = _moviesFromApi
 
     init {
         observeMovies()
@@ -39,7 +38,7 @@ class MovieListViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             repository.observeMovies(query, genres, date, rating, favorites, sortBy)
                 .collect { movies ->
-                    _moviesFromApi.postValue(ApiResult.Success(movies))
+                    _moviesFromApi.postValue(Resource.Success(movies))
                 }
         }
     }
@@ -47,7 +46,7 @@ class MovieListViewModel(app: Application) : AndroidViewModel(app) {
     fun refresh() {
         viewModelScope.launch {
             when (val result = repository.refreshMovies()) {
-                is ApiResult.Failure -> _moviesFromApi.postValue(ApiResult.Failure(result.error))
+                is Resource.Error -> _moviesFromApi.postValue(result)
                 else -> Unit
             }
         }

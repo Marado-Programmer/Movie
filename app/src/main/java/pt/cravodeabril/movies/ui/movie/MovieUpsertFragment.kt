@@ -6,8 +6,8 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
+import pt.cravodeabril.movies.App
 import pt.cravodeabril.movies.R
-import pt.cravodeabril.movies.data.local.entity.MovieWithDetails
 import pt.cravodeabril.movies.databinding.FragmentMovieUpsertBinding
 
 class MovieUpsertFragment : Fragment(R.layout.fragment_movie_upsert) {
@@ -24,6 +24,18 @@ class MovieUpsertFragment : Fragment(R.layout.fragment_movie_upsert) {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        if (!(requireActivity().application as App).container.loginRepository.isLoggedIn) {
+            val action =
+                MovieUpsertFragmentDirections
+                    .actionMovieUpsertFragmentToLogInFragment(
+                        returnDestination = R.id.movieUpsertFragment
+                    )
+
+            findNavController().navigate(action)
+            return
+        }
+
         _binding = FragmentMovieUpsertBinding.bind(view)
 
         bindForm()

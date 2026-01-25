@@ -9,7 +9,13 @@
         android:id="@+id/loginFragment"
         android:name="pt.cravodeabril.movies.ui.LoginFragment"
         android:label="fragment_login"
-        tools:layout="@layout/fragment_login"/>
+        tools:layout="@layout/fragment_login">
+        <argument
+            android:name="returnDestination"
+            android:defaultValue="@id/movieListFragment"
+            app:argType="reference" />
+    </fragment>
+
     <fragment
         android:id="@+id/movieListFragment"
         android:name="pt.cravodeabril.movies.ui.movie.MovieListFragment"
@@ -21,9 +27,9 @@
             app:nullable="true" />
         <argument
             android:name="genre"
+            android:defaultValue="@null"
             app:argType="string[]"
-            app:nullable="true"
-            android:defaultValue="@null" />
+            app:nullable="true" />
         <argument
             android:name="sortBy"
             android:defaultValue="releaseDate"
@@ -77,14 +83,18 @@
         tools:layout="@layout/fragment_movie_upsert">
         <argument
             android:name="movieId"
-            app:argType="long"
-            android:defaultValue="-1L" />
+            android:defaultValue="-1L"
+            app:argType="long" />
         <action
             android:id="@+id/action_movieUpsertFragment_to_movieDetailsFragment"
             app:destination="@id/movieDetailsFragment">
             <argument
                 android:name="movieId"
                 app:argType="long" />
+        </action>
+        <action
+            android:id="@+id/action_movieUpsertFragment_to_logInFragment"
+            app:destination="@id/loginFragment">
         </action>
     </fragment>
 </navigation>

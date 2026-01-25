@@ -9,7 +9,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
-import pt.cravodeabril.movies.data.ApiResult
+import pt.cravodeabril.movies.data.Resource
 import pt.cravodeabril.movies.data.ProblemDetails
 import pt.cravodeabril.movies.data.local.AppDatabase
 import pt.cravodeabril.movies.data.repository.MovieRepository
@@ -46,8 +46,8 @@ class MovieUpsertViewModel(app: Application, private val movieId: Long? = null) 
             _state.value = MovieFormState.Loading
 
             val refreshResult = repository.refreshMovie(movieId!!)
-            if (refreshResult is ApiResult.Failure) {
-                _state.value = MovieFormState.Error(refreshResult.error)
+            if (refreshResult is Resource.Error) {
+                _state.value = MovieFormState.Error(refreshResult.problem)
                 return@launch
             }
 
@@ -102,8 +102,8 @@ class MovieUpsertViewModel(app: Application, private val movieId: Long? = null) 
             }
 
             when (result) {
-                is ApiResult.Success -> _state.value = MovieFormState.Saved
-                is ApiResult.Failure -> _state.value = MovieFormState.Error(result.error)
+                is Resource.Success -> _state.value = MovieFormState.Saved
+                is Resource.Error -> _state.value = MovieFormState.Error(result.problem)
                 else -> {}
             }
         }
@@ -118,8 +118,8 @@ class MovieUpsertViewModel(app: Application, private val movieId: Long? = null) 
             _state.value = MovieFormState.Loading
 
             when (val result = repository.deleteMovie(movieId!!)) {
-                is ApiResult.Success -> _state.value = MovieFormState.Deleted
-                is ApiResult.Failure -> _state.value = MovieFormState.Error(result.error)
+                is Resource.Success -> _state.value = MovieFormState.Deleted
+                is Resource.Error -> _state.value = MovieFormState.Error(result.problem)
                 else -> {}
             }
         }
@@ -158,5 +158,5 @@ sealed class MovieFormState {
     object Loading : MovieFormState()
     object Saved : MovieFormState()
     object Deleted : MovieFormState()
-    data class Error(val err: ProblemDetails) : MovieFormState()
+    data class Error(val err: ProblemDetails?) : MovieFormState()
 }

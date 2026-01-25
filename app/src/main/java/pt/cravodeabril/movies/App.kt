@@ -4,13 +4,15 @@ import android.app.Application
 import coil3.SingletonImageLoader
 import pt.cravodeabril.movies.data.createCoilImageLoader
 
-class MoviesApp : Application() {
+class App : Application() {
+    lateinit var container: AppContainer
+        private set
 
     override fun onCreate() {
         super.onCreate()
+        container = AppContainer(this)
         SingletonImageLoader.setSafe {
             createCoilImageLoader(it)
         }
-
     }
 }

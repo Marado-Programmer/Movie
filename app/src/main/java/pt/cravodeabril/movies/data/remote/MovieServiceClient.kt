@@ -22,7 +22,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import pt.cravodeabril.movies.data.ApiResult
+import pt.cravodeabril.movies.data.Resource
 import pt.cravodeabril.movies.data.ProblemDetails
 import java.io.File
 import kotlin.time.Instant
@@ -77,8 +77,8 @@ object MovieServiceClient {
         favoritesOnly: Boolean = false,
         sortBy: String = "releaseDate",
         sortOrder: String = "desc",
-    ): Flow<ApiResult<List<MovieSimple>>> = flow {
-        emit(ApiResult.Loading)
+    ): Flow<Resource<List<MovieSimple>>> = flow {
+        emit(Resource.Loading)
         try {
             val response = client.get("/movies") {
                 parameter("offset", offset)
@@ -95,14 +95,15 @@ object MovieServiceClient {
                 parameter("sortOrder", sortOrder)
             }
             if (response.status.isSuccess()) {
-                emit(ApiResult.Success(response.body()))
+                emit(Resource.Success(response.body()))
             } else {
-                emit(ApiResult.Failure(response.body()))
+                emit(Resource.Error(response.body()))
             }
         } catch (e: Exception) {
             emit(
-                ApiResult.Failure(
-                    ProblemDetails(
+                Resource.Error(
+                    e,
+                    problem = ProblemDetails(
                         type = "Network",
                         title = "Network error",
                         status = 500,
@@ -113,19 +114,20 @@ object MovieServiceClient {
         }
     }
 
-    fun getMovie(movieId: Long): Flow<ApiResult<MovieDetail>> = flow {
-        emit(ApiResult.Loading)
+    fun getMovie(movieId: Long): Flow<Resource<MovieDetail>> = flow {
+        emit(Resource.Loading)
         try {
             val response = client.get("/movies/$movieId")
             if (response.status.isSuccess()) {
-                emit(ApiResult.Success(response.body()))
+                emit(Resource.Success(response.body()))
             } else {
-                emit(ApiResult.Failure(response.body()))
+                emit(Resource.Error(response.body()))
             }
         } catch (e: Exception) {
             emit(
-                ApiResult.Failure(
-                    ProblemDetails(
+                Resource.Error(
+                    e,
+                    problem = ProblemDetails(
                         type = "Network",
                         title = "Network error",
                         status = 500,
@@ -136,7 +138,7 @@ object MovieServiceClient {
         }
     }
 
-    suspend fun getMoviePicture(movieId: Long, pictureId: Long): Flow<ApiResult<FileRepresentation>>? {
+    suspend fun getMoviePicture(movieId: Long, pictureId: Long): Flow<Resource<FileRepresentation>>? {
         val response = client.get("/movies/$movieId/pictures/$pictureId")
         val bytes = response.body<ByteArray>()
         // FileOutputStream(file).use { it.write(bytes) }
@@ -145,21 +147,22 @@ object MovieServiceClient {
 
     fun getMovieRatings(
         movieId: Long, sortBy: String = "desc", excludeUser: Int? = null
-    ): Flow<ApiResult<List<MovieRating>>> = flow {
-        emit(ApiResult.Loading)
+    ): Flow<Resource<List<MovieRating>>> = flow {
+        emit(Resource.Loading)
         try {
             val response = client.get("/movies/$movieId/ratings") {
                 parameter("sortBy", sortBy)
                 excludeUser?.let { parameter("excludeUser", it) }
             }
             if (response.status.isSuccess()) {
-                emit(ApiResult.Success(response.body()))
+                emit(Resource.Success(response.body()))
             } else {
-                emit(ApiResult.Failure(response.body()))
+                emit(Resource.Error(response.body()))
             }
         } catch (e: Exception) {
             emit(
-                ApiResult.Failure(
+                Resource.Error(
+                    e,
                     ProblemDetails(
                         type = "Network",
                         title = "Network error",
@@ -177,51 +180,79 @@ object MovieServiceClient {
         }
     }
 
-    suspend fun createMovie(cmd: CreateMovieCommand): ApiResult<MovieDetail> {
+    suspend fun createMovie(cmd: CreateMovieCommand): Resource<MovieDetail> {
         return try {
             val response = client.post("/movies") {
                 setBody(cmd)
             }
             if (response.status.isSuccess())
-                ApiResult.Success(response.body())
+                Resource.Success(response.body())
             else
-                ApiResult.Failure(response.body())
+                Resource.Error(response.body())
         } catch (e: Exception) {
-            ApiResult.Failure(
+            Resource.Error(
+                e,
                 ProblemDetails("Network", "Create failed", 500, e.message ?: "")
             )
         }
     }
 
-    suspend fun updateMovie(cmd: UpdateMovieCommand): ApiResult<MovieDetail> {
+    suspend fun updateMovie(cmd: UpdateMovieCommand): Resource<MovieDetail> {
         return try {
             val response = client.put("/movies") {
                 setBody(cmd)
             }
             if (response.status.isSuccess())
-                ApiResult.Success(response.body())
+                Resource.Success(response.body())
             else
-                ApiResult.Failure(response.body())
+                Resource.Error(response.body())
         } catch (e: Exception) {
-            ApiResult.Failure(
+            Resource.Error(
+                e,
                 ProblemDetails("Network", "Update failed", 500, e.message ?: "")
             )
         }
     }
 
-    suspend fun deleteMovie(movieId: Long): ApiResult<Unit> {
+    suspend fun deleteMovie(movieId: Long): Resource<Unit> {
         return try {
             val response = client.delete("/movies/$movieId")
             if (response.status.isSuccess())
-                ApiResult.Success(Unit)
+                Resource.Success(Unit)
             else
-                ApiResult.Failure(response.body())
+                Resource.Error(response.body())
         } catch (e: Exception) {
-            ApiResult.Failure(
+            Resource.Error(
+                e,
                 ProblemDetails("Network", "Delete failed", 500, e.message ?: "")
             )
         }
     }
+
+    suspend fun login(username: String, password: String): Resource<LoginResponse> {
+        return try {
+            setCredentials(username, password)
+
+            val response = client.get("/users/login")
+
+            if (response.status.isSuccess()) {
+                Resource.Success(response.body())
+            } else {
+                Resource.Error(response.body())
+            }
+        } catch (e: Exception) {
+            Resource.Error(
+                e,
+                ProblemDetails(
+                    type = "Network",
+                    title = "Login failed",
+                    status = 500,
+                    detail = e.message ?: "Unknown"
+                )
+            )
+        }
+    }
+
 }
 
 data class Credentials(

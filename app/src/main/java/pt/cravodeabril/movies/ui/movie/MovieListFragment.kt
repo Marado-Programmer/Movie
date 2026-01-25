@@ -15,17 +15,15 @@ import androidx.recyclerview.widget.RecyclerView
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import coil3.request.target
+import pt.cravodeabril.movies.App
 import pt.cravodeabril.movies.R
-import pt.cravodeabril.movies.data.ApiResult
+import pt.cravodeabril.movies.data.Resource
 import pt.cravodeabril.movies.data.createCoilImageLoader
 import pt.cravodeabril.movies.data.local.entity.MovieWithDetails
 import pt.cravodeabril.movies.databinding.FragmentMovieListBinding
 import pt.cravodeabril.movies.databinding.ItemMovieBinding
 import pt.cravodeabril.movies.utils.diffCallbackOf
 
-/**
- * A fragment representing a list of Items.
- */
 class MovieListFragment : Fragment(R.layout.fragment_movie_list) {
     private val args: MovieListFragmentArgs by navArgs()
     private val adapter = ListAdapter()
@@ -59,14 +57,14 @@ class MovieListFragment : Fragment(R.layout.fragment_movie_list) {
 
         viewModel.movies.observe(viewLifecycleOwner) { state ->
             when (state) {
-                is ApiResult.Loading -> binding.loading.visibility = View.VISIBLE
-                is ApiResult.Success -> {
+                is Resource.Loading -> binding.loading.visibility = View.VISIBLE
+                is Resource.Success -> {
                     binding.loading.visibility = View.GONE
                     adapter.submitList(state.data)
                     binding.swipeRefresh.isRefreshing = false
                 }
 
-                is ApiResult.Failure -> {
+                is Resource.Error -> {
                     binding.loading.visibility = View.GONE
                     // showError(state.message)
                     binding.swipeRefresh.isRefreshing = false
@@ -75,8 +73,7 @@ class MovieListFragment : Fragment(R.layout.fragment_movie_list) {
         }
 
         binding.create.setOnClickListener {
-            // TODO: CREATE
-            // findNavController().navigate(MovieListFragmentDirections.actionMovieListFragmentToLoginFragment())
+            findNavController().navigate(MovieListFragmentDirections.actionMovieListFragmentToMovieCreateFragment())
         }
     }
 
@@ -90,6 +87,8 @@ class MovieListFragment : Fragment(R.layout.fragment_movie_list) {
         binding.toolbar.setOnMenuItemClickListener { menuItem ->
             when (menuItem.itemId) {
                 R.id.logout -> {
+                    (requireActivity().application as App).container.loginRepository.logout()
+
                     findNavController().navigate(
                         // MovieListFragmentDirections.actionMovieListFragmentToLoginFragment(),
                         NavOptions.Builder().apply {

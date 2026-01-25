@@ -9,7 +9,7 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import coil3.request.target
 import pt.cravodeabril.movies.R
-import pt.cravodeabril.movies.data.ApiResult
+import pt.cravodeabril.movies.data.Resource
 import pt.cravodeabril.movies.data.createCoilImageLoader
 import pt.cravodeabril.movies.data.local.entity.MovieWithDetails
 import pt.cravodeabril.movies.databinding.FragmentMovieDetailsBinding
@@ -30,11 +30,11 @@ class MovieDetailsFragment : Fragment(R.layout.fragment_movie_details) {
 
         viewModel.movie.observe(viewLifecycleOwner) { state ->
             when (state) {
-                is ApiResult.Loading -> {}
-                is ApiResult.Success -> {
+                is Resource.Loading -> {}
+                is Resource.Success -> {
                     bindMovie(state.data)
                 }
-                is ApiResult.Failure -> {
+                is Resource.Error -> {
                     // showError(state.message)
                 }
             }

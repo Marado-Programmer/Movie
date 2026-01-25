@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateRange
-import pt.cravodeabril.movies.data.ApiResult
+import pt.cravodeabril.movies.data.Resource
 import pt.cravodeabril.movies.data.ProblemDetails
 import pt.cravodeabril.movies.data.local.dao.GenreDao
 import pt.cravodeabril.movies.data.local.dao.MovieDao
@@ -71,7 +71,7 @@ class MovieRepository(
         favoritesOnly: Boolean = false,
         sortBy: String = "releaseDate",
         sortOrder: String = "desc",
-    ): ApiResult<Unit> {
+    ): Resource<Unit> {
         return when (val result = MovieServiceClient.getMovies(
             offset,
             count,
@@ -85,32 +85,32 @@ class MovieRepository(
             favoritesOnly,
             sortBy,
             sortOrder
-        ).first() { it !is ApiResult.Loading }) {
-            is ApiResult.Success -> {
+        ).first() { it !is Resource.Loading }) {
+            is Resource.Success -> {
                 persistMovies(result.data)
-                ApiResult.Success(Unit)
+                Resource.Success(Unit)
             }
 
-            is ApiResult.Failure -> result
-            else -> ApiResult.Failure(
-                ProblemDetails("Unknown", "Unexpected state", 500, "")
+            is Resource.Error -> result
+            else -> Resource.Error(
+                problem = ProblemDetails("Unknown", "Unexpected state", 500, "")
             )
         }
     }
 
     suspend fun observeMovie(id: Long): MovieWithDetails? = movieDao.observeMovie(id)
 
-    suspend fun refreshMovie(movieId: Long): ApiResult<Unit> {
+    suspend fun refreshMovie(movieId: Long): Resource<Unit> {
         return when (val result =
-            MovieServiceClient.getMovie(movieId).first() { it !is ApiResult.Loading }) {
-            is ApiResult.Success -> {
+            MovieServiceClient.getMovie(movieId).first() { it !is Resource.Loading }) {
+            is Resource.Success -> {
                 persistMovie(result.data)
-                ApiResult.Success(Unit)
+                Resource.Success(Unit)
             }
 
-            is ApiResult.Failure -> result
-            else -> ApiResult.Failure(
-                ProblemDetails("Unknown", "Unexpected state", 500, "")
+            is Resource.Error -> result
+            else -> Resource.Error(
+                problem = ProblemDetails("Unknown", "Unexpected state", 500, "")
             )
         }
     }
@@ -300,7 +300,7 @@ class MovieRepository(
         directorId: Long?,
         cast: List<RoleAssignment> = emptyList(),
         pictures: List<CreatePicture> = emptyList()
-    ): ApiResult<MovieDetail> {
+    ): Resource<MovieDetail> {
 
         val command = CreateMovieCommand(
             title = title,
@@ -314,15 +314,15 @@ class MovieRepository(
         )
 
         return when (val result = MovieServiceClient.createMovie(command)) {
-            is ApiResult.Success -> {
+            is Resource.Success -> {
                 persistMovie(result.data)
-                ApiResult.Success(result.data)
+                Resource.Success(result.data)
             }
 
-            is ApiResult.Failure -> result
+            is Resource.Error -> result
 
-            else -> ApiResult.Failure(
-                ProblemDetails("Unknown", "Unexpected state", 500, "")
+            else -> Resource.Error(
+                problem = ProblemDetails("Unknown", "Unexpected state", 500, "")
             )
         }
     }
@@ -335,7 +335,7 @@ class MovieRepository(
         minimumAge: Int,
         genres: Set<Int>,
         directorId: Long?
-    ): ApiResult<MovieDetail> {
+    ): Resource<MovieDetail> {
 
         val command = UpdateMovieCommand(
             id = id.toInt(),
@@ -348,33 +348,33 @@ class MovieRepository(
         )
 
         return when (val result = MovieServiceClient.updateMovie(command)) {
-            is ApiResult.Success -> {
+            is Resource.Success -> {
                 persistMovie(result.data)
-                ApiResult.Success(result.data)
+                Resource.Success(result.data)
             }
 
-            is ApiResult.Failure -> result
+            is Resource.Error -> result
 
-            else -> ApiResult.Failure(
-                ProblemDetails("Unknown", "Unexpected state", 500, "")
+            else -> Resource.Error(
+                problem = ProblemDetails("Unknown", "Unexpected state", 500, "")
             )
         }
     }
 
-    suspend fun deleteMovie(movieId: Long): ApiResult<Unit> {
+    suspend fun deleteMovie(movieId: Long): Resource<Unit> {
         return when (val result = MovieServiceClient.deleteMovie(movieId)) {
-            is ApiResult.Success -> {
+            is Resource.Success -> {
                 movieDao.deleteCastByMovie(movieId)
                 movieDao.deletePicturesByMovie(movieId)
                 movieDao.clearMovieGenres(movieId)
                 movieDao.deleteMovie(movieId)
-                ApiResult.Success(Unit)
+                Resource.Success(Unit)
             }
 
-            is ApiResult.Failure -> result
+            is Resource.Error -> result
 
-            else -> ApiResult.Failure(
-                ProblemDetails("Unknown", "Unexpected state", 500, "")
+            else -> Resource.Error(
+                problem = ProblemDetails("Unknown", "Unexpected state", 500, "")
             )
         }
     }
