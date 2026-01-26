@@ -1,6 +1,5 @@
 package pt.cravodeabril.movies.data.remote
 
-import android.util.Log
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.android.Android
@@ -73,7 +72,7 @@ object MovieServiceClient {
         }
     }
 
-    fun getMovies(
+    suspend fun getMovies(
         offset: Long = 0,
         count: Int = Int.MAX_VALUE,
         director: Int? = null,
@@ -86,9 +85,8 @@ object MovieServiceClient {
         favoritesOnly: Boolean = false,
         sortBy: String = "releaseDate",
         sortOrder: String = "desc",
-    ): Flow<Resource<List<MovieSimple>>> = flow {
-        emit(Resource.Loading)
-        try {
+    ): Resource<List<MovieSimple>> {
+        return try {
             val response = client.get("/movies") {
                 parameter("offset", offset)
                 parameter("count", count)
@@ -104,19 +102,17 @@ object MovieServiceClient {
                 parameter("sortOrder", sortOrder)
             }
             if (response.status.isSuccess()) {
-                emit(Resource.Success(response.body()))
+                Resource.Success(response.body())
             } else {
-                emit(Resource.Error(response.body()))
+                Resource.Error(response.body())
             }
         } catch (e: Exception) {
-            emit(
-                Resource.Error(
-                    e, problem = ProblemDetails(
-                        type = "Network",
-                        title = "Network error",
-                        status = 500,
-                        detail = e.message ?: "Unknown"
-                    )
+            Resource.Error(
+                e, problem = ProblemDetails(
+                    type = "Network",
+                    title = "Network error",
+                    status = 500,
+                    detail = e.message ?: "Unknown"
                 )
             )
         }
@@ -146,8 +142,7 @@ object MovieServiceClient {
     }
 
     suspend fun getMoviePicture(
-        movieId: Long,
-        pictureId: Long
+        movieId: Long, pictureId: Long
     ): Flow<Resource<FileRepresentation>>? {
         val response = client.get("/movies/$movieId/pictures/$pictureId")
         val bytes = response.body<ByteArray>()
@@ -197,7 +192,6 @@ object MovieServiceClient {
             if (response.status.isSuccess()) Resource.Success(response.body())
             else Resource.Error(response.body())
         } catch (e: Exception) {
-            Log.wtf("EXCEPTION", e)
             Resource.Error(
                 e, ProblemDetails("Network", "Create failed", 500, e.message ?: "")
             )
@@ -259,6 +253,7 @@ data class Credentials(
     val username: String, val password: String
 )
 
+@Serializable
 data class MovieSimple(
     val id: Int,
     val title: String,

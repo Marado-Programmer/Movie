@@ -73,7 +73,7 @@ class MovieRepository(
         sortBy: String = "releaseDate",
         sortOrder: String = "desc",
     ): Resource<Unit> {
-        return when (val result = MovieServiceClient.getMovies(
+        val result = MovieServiceClient.getMovies(
             offset,
             count,
             director,
@@ -86,7 +86,8 @@ class MovieRepository(
             favoritesOnly,
             sortBy,
             sortOrder
-        ).first { it !is Resource.Loading }) {
+        )
+        return when (result) {
             is Resource.Success -> {
                 persistMovies(result.data)
                 Resource.Success(Unit)
