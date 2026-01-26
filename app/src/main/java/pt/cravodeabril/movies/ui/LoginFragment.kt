@@ -20,13 +20,13 @@ class LoginFragment : Fragment(R.layout.fragment_login) {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         _binding = FragmentLoginBinding.bind(view)
 
-        setLoading(true)
-
         requireActivity().getSharedPreferences("prefs", 0).apply {
                 val username = getString("username", "")
                 val password = getString("password", "")
 
                 if (username != "" && password != "") {
+                    setLoading(true)
+
                     binding.username.setText(username)
                     binding.password.setText(password)
 
