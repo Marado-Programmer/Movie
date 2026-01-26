@@ -1,5 +1,6 @@
 package pt.cravodeabril.movies.data.remote
 
+import android.util.Log
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.android.Android
@@ -22,8 +23,12 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import pt.cravodeabril.movies.data.Resource
+import kotlinx.serialization.modules.SerializersModule
+import kotlinx.serialization.modules.contextual
 import pt.cravodeabril.movies.data.ProblemDetails
+import pt.cravodeabril.movies.data.Resource
+import pt.cravodeabril.movies.utils.ByteArraySerializer
+import pt.cravodeabril.movies.utils.InstantSerializer
 import java.io.File
 import kotlin.time.Instant
 
@@ -46,6 +51,10 @@ object MovieServiceClient {
         HttpClient(Android) {
             install(ContentNegotiation) {
                 json(Json {
+                    serializersModule = SerializersModule {
+                        contextual(InstantSerializer())
+                        contextual(ByteArraySerializer())
+                    }
                     ignoreUnknownKeys = true
                     isLenient = true
                 })
@@ -102,8 +111,7 @@ object MovieServiceClient {
         } catch (e: Exception) {
             emit(
                 Resource.Error(
-                    e,
-                    problem = ProblemDetails(
+                    e, problem = ProblemDetails(
                         type = "Network",
                         title = "Network error",
                         status = 500,
@@ -126,8 +134,7 @@ object MovieServiceClient {
         } catch (e: Exception) {
             emit(
                 Resource.Error(
-                    e,
-                    problem = ProblemDetails(
+                    e, problem = ProblemDetails(
                         type = "Network",
                         title = "Network error",
                         status = 500,
@@ -138,7 +145,10 @@ object MovieServiceClient {
         }
     }
 
-    suspend fun getMoviePicture(movieId: Long, pictureId: Long): Flow<Resource<FileRepresentation>>? {
+    suspend fun getMoviePicture(
+        movieId: Long,
+        pictureId: Long
+    ): Flow<Resource<FileRepresentation>>? {
         val response = client.get("/movies/$movieId/pictures/$pictureId")
         val bytes = response.body<ByteArray>()
         // FileOutputStream(file).use { it.write(bytes) }
@@ -162,8 +172,7 @@ object MovieServiceClient {
         } catch (e: Exception) {
             emit(
                 Resource.Error(
-                    e,
-                    ProblemDetails(
+                    e, ProblemDetails(
                         type = "Network",
                         title = "Network error",
                         status = 500,
@@ -185,14 +194,12 @@ object MovieServiceClient {
             val response = client.post("/movies") {
                 setBody(cmd)
             }
-            if (response.status.isSuccess())
-                Resource.Success(response.body())
-            else
-                Resource.Error(response.body())
+            if (response.status.isSuccess()) Resource.Success(response.body())
+            else Resource.Error(response.body())
         } catch (e: Exception) {
+            Log.wtf("EXCEPTION", e)
             Resource.Error(
-                e,
-                ProblemDetails("Network", "Create failed", 500, e.message ?: "")
+                e, ProblemDetails("Network", "Create failed", 500, e.message ?: "")
             )
         }
     }
@@ -202,14 +209,11 @@ object MovieServiceClient {
             val response = client.put("/movies") {
                 setBody(cmd)
             }
-            if (response.status.isSuccess())
-                Resource.Success(response.body())
-            else
-                Resource.Error(response.body())
+            if (response.status.isSuccess()) Resource.Success(response.body())
+            else Resource.Error(response.body())
         } catch (e: Exception) {
             Resource.Error(
-                e,
-                ProblemDetails("Network", "Update failed", 500, e.message ?: "")
+                e, ProblemDetails("Network", "Update failed", 500, e.message ?: "")
             )
         }
     }
@@ -217,14 +221,11 @@ object MovieServiceClient {
     suspend fun deleteMovie(movieId: Long): Resource<Unit> {
         return try {
             val response = client.delete("/movies/$movieId")
-            if (response.status.isSuccess())
-                Resource.Success(Unit)
-            else
-                Resource.Error(response.body())
+            if (response.status.isSuccess()) Resource.Success(Unit)
+            else Resource.Error(response.body())
         } catch (e: Exception) {
             Resource.Error(
-                e,
-                ProblemDetails("Network", "Delete failed", 500, e.message ?: "")
+                e, ProblemDetails("Network", "Delete failed", 500, e.message ?: "")
             )
         }
     }
@@ -242,8 +243,7 @@ object MovieServiceClient {
             }
         } catch (e: Exception) {
             Resource.Error(
-                e,
-                ProblemDetails(
+                e, ProblemDetails(
                     type = "Network",
                     title = "Login failed",
                     status = 500,
@@ -273,8 +273,10 @@ data class MovieSimple(
     val updatedAt: Instant?,
 )
 
+@Serializable
 data class Director(val personId: Int, val name: String, val picture: PictureInfo?)
 
+@Serializable
 data class PictureInfo(
     val id: Int,
     val filename: String,
@@ -283,6 +285,7 @@ data class PictureInfo(
     val description: String?
 )
 
+@Serializable
 data class MovieDetail(
     val id: Int,
     val title: String,
@@ -292,14 +295,15 @@ data class MovieDetail(
     val director: Director?,
     val pictures: List<PictureInfo>,
     val rating: Rating?,
-    val favorite: Boolean,
-    val userRating: UserRating?,
+    val favorite: Boolean = false,
+    val userRating: UserRating? = null,
     val minimumAge: Int,
     val createdAt: Instant,
     val updatedAt: Instant?,
     val cast: List<CastMember>,
 )
 
+@Serializable
 data class Genre(val id: Int, val name: String, val description: String?)
 
 @Serializable
@@ -308,8 +312,10 @@ data class Rating(val average: Float, val buckets: List<RatingBucket>)
 @Serializable
 data class RatingBucket(val rating: Int, val count: Int)
 
+@Serializable
 data class UserRating(val rating: Int, val comment: String?)
 
+@Serializable
 data class CastMember(val personId: Int, val name: String, val character: String)
 
 class FileRepresentation(val file: File, val filename: String, val contentType: String)
@@ -317,6 +323,7 @@ class FileRepresentation(val file: File, val filename: String, val contentType: 
 @Serializable
 data class MovieRating(val movieId: Int, val userId: Int, val score: Int, val comment: String?)
 
+@Serializable
 data class CreateMovieCommand(
     val title: String,
     val synopsis: String,
@@ -329,9 +336,16 @@ data class CreateMovieCommand(
     val id: Int? = null
 )
 
+@Serializable
 data class RoleAssignment(val personId: Int, val role: String)
 
-class CreatePicture(val filename: String, val data: ByteArray, val description: String? = null, val mainPicture: Boolean = false)
+@Serializable
+class CreatePicture(
+    val filename: String,
+    val data: String /*ByteArray*/,
+    val description: String? = null,
+    val mainPicture: Boolean = false
+)
 
 data class UpdateMovieCommand(
     val id: Int,

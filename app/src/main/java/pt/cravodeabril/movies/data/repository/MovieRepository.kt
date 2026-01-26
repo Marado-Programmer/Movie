@@ -6,8 +6,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateRange
-import pt.cravodeabril.movies.data.Resource
 import pt.cravodeabril.movies.data.ProblemDetails
+import pt.cravodeabril.movies.data.Resource
 import pt.cravodeabril.movies.data.local.dao.GenreDao
 import pt.cravodeabril.movies.data.local.dao.MovieDao
 import pt.cravodeabril.movies.data.local.dao.PersonDao
@@ -33,6 +33,7 @@ class MovieRepository(
     private val movieDao: MovieDao,
     private val genreDao: GenreDao,
     private val personDao: PersonDao,
+    private val login: LoginRepository,
 ) {
     // TODO: filter by `director`
     fun observeMovies(
@@ -85,7 +86,7 @@ class MovieRepository(
             favoritesOnly,
             sortBy,
             sortOrder
-        ).first() { it !is Resource.Loading }) {
+        ).first { it !is Resource.Loading }) {
             is Resource.Success -> {
                 persistMovies(result.data)
                 Resource.Success(Unit)
@@ -102,7 +103,7 @@ class MovieRepository(
 
     suspend fun refreshMovie(movieId: Long): Resource<Unit> {
         return when (val result =
-            MovieServiceClient.getMovie(movieId).first() { it !is Resource.Loading }) {
+            MovieServiceClient.getMovie(movieId).first { it !is Resource.Loading }) {
             is Resource.Success -> {
                 persistMovie(result.data)
                 Resource.Success(Unit)
@@ -117,7 +118,7 @@ class MovieRepository(
 
     @Transaction
     private suspend fun persistMovies(apiMovies: List<MovieSimple>) {
-        val userId: Long? = null
+        val userId = login.user?.id
 
         val movies = apiMovies.map {
             MovieEntity(
@@ -192,7 +193,7 @@ class MovieRepository(
 
     @Transaction
     private suspend fun persistMovie(apiMovie: MovieDetail) {
-        val userId: Long? = null
+        val userId = login.user?.id
 
         val movie = MovieEntity(
             id = apiMovie.id.toLong(),
@@ -219,8 +220,7 @@ class MovieRepository(
 
         movieDao.upsertGenres(apiMovie.genres.map {
             MovieGenreCrossRef(
-                movieId = apiMovie.id.toLong(),
-                genreId = it.id.toLong()
+                movieId = apiMovie.id.toLong(), genreId = it.id.toLong()
             )
         })
 
@@ -269,7 +269,7 @@ class MovieRepository(
     }
 
     suspend fun toggleFavorite(movieId: Long, favorite: Boolean) {
-        val userId: Long? = null
+        val userId = login.user?.id
 
         if (userId != null) {
             if (favorite) {
@@ -282,7 +282,7 @@ class MovieRepository(
     }
 
     suspend fun isFavorite(movieId: Long): Boolean? {
-        val userId: Long? = null
+        val userId = login.user?.id
 
         if (userId != null) {
             return movieDao.isFavorite(movieId, userId)
@@ -313,7 +313,9 @@ class MovieRepository(
             minimumAge = minimumAge
         )
 
-        return when (val result = MovieServiceClient.createMovie(command)) {
+        val result = MovieServiceClient.createMovie(command)
+
+        return when (result) {
             is Resource.Success -> {
                 persistMovie(result.data)
                 Resource.Success(result.data)

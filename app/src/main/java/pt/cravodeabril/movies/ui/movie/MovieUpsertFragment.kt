@@ -2,35 +2,51 @@ package pt.cravodeabril.movies.ui.movie
 
 import android.os.Bundle
 import android.view.View
+import android.widget.Toast
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
+import coil3.load
+import com.google.android.material.datepicker.MaterialStyledDatePickerDialog
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.format
 import pt.cravodeabril.movies.App
 import pt.cravodeabril.movies.R
 import pt.cravodeabril.movies.databinding.FragmentMovieUpsertBinding
+import java.util.Calendar
 
 class MovieUpsertFragment : Fragment(R.layout.fragment_movie_upsert) {
 
+    private lateinit var datePickerDialog: MaterialStyledDatePickerDialog
+    private lateinit var getContent: ActivityResultLauncher<String>
     private val args: MovieUpsertFragmentArgs by navArgs()
     private val viewModel: MovieUpsertViewModel by viewModels {
         MovieUpsertViewModelFactory(
-            requireActivity().application, args.movieId
+            requireActivity().application, if (args.movieId == -1L) null else args.movieId
         )
     }
 
     private var _binding: FragmentMovieUpsertBinding? = null
     private val binding get() = _binding!!
 
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        this.getContent = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            binding.image.load(uri)
+            viewModel.picture.postValue(uri)
+        }
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
         if (!(requireActivity().application as App).container.loginRepository.isLoggedIn) {
-            val action =
-                MovieUpsertFragmentDirections
-                    .actionMovieUpsertFragmentToLogInFragment(
-                        returnDestination = R.id.movieUpsertFragment
-                    )
+            val action = MovieUpsertFragmentDirections.actionMovieUpsertFragmentToLogInFragment()
 
             findNavController().navigate(action)
             return
@@ -45,30 +61,56 @@ class MovieUpsertFragment : Fragment(R.layout.fragment_movie_upsert) {
 
     private fun bindForm() {
         viewModel.title.observe(viewLifecycleOwner) {
-            if (binding.titleInput.text.toString() != it)
-                binding.titleInput.setText(it)
+            if (binding.titleInput.text.toString() != it) binding.titleInput.setText(it)
         }
 
         viewModel.synopsis.observe(viewLifecycleOwner) {
-            if (binding.synopsisInput.text.toString() != it)
-                binding.synopsisInput.setText(it)
+            if (binding.synopsisInput.text.toString() != it) binding.synopsisInput.setText(it)
         }
 
-//        viewModel.minimumAge.observe(viewLifecycleOwner) {
-//            binding.minimumAgeInput.setText(it.toString())
-//        }
+        val c = Calendar.getInstance()
+        val year = c.get(Calendar.YEAR)
+        val month = c.get(Calendar.MONTH)
+        val day = c.get(Calendar.DAY_OF_MONTH)
+        datePickerDialog = MaterialStyledDatePickerDialog(
+            requireContext(),
+            { _, year, month, day -> binding.releaseDateInput.setText("${year}-${if (month < 9) "0" else ""}${month + 1}-${if (day < 10) "0" else ""}${day}") },
+            year,
+            month,
+            day
+        )
 
-        // releaseDate, genres, director omitted for brevity
+        viewModel.releaseDate.observe(viewLifecycleOwner) {
+            if (LocalDate.parse(binding.releaseDateInput.text.toString()) != it) {
+                binding.releaseDateInput.setText(
+                    it.format(LocalDate.Formats.ISO)
+                )
+            }
+        }
+
+        viewModel.minimumAge.observe(viewLifecycleOwner) {
+            if (binding.ageInput.text.toString()
+                    .toIntOrNull() != it
+            ) binding.ageInput.setText(it.toString())
+        }
     }
 
     private fun bindActions() {
-        binding.saveBtn.setOnClickListener {
-            viewModel.save()
+        binding.image.setOnClickListener {
+            getContent.launch("image/*")
         }
 
-        binding.deleteBtn.apply {
-            visibility = if (viewModel.isEditMode) View.VISIBLE else View.GONE
-            setOnClickListener { viewModel.delete() }
+        binding.releaseDateInput.setOnClickListener { _ -> datePickerDialog.show() }
+
+        binding.create.setOnClickListener {
+            viewModel.title.postValue(binding.titleInput.text.toString())
+            viewModel.synopsis.postValue(binding.synopsisInput.text.toString())
+            viewModel.releaseDate.postValue(
+                LocalDate.Formats.ISO.parse(binding.releaseDateInput.text.toString())
+            )
+            viewModel.minimumAge.postValue(binding.ageInput.text.toString().toInt())
+
+            viewModel.save()
         }
     }
 
@@ -76,21 +118,21 @@ class MovieUpsertFragment : Fragment(R.layout.fragment_movie_upsert) {
         viewModel.state.observe(viewLifecycleOwner) { state ->
             when (state) {
                 MovieFormState.Loading -> {
-                    // binding.progress.visibility = View.VISIBLE
+                    setLoading(true)
                 }
 
                 MovieFormState.Idle -> {
-                    // binding.progress.visibility = View.GONE
+                    setLoading(false)
                 }
 
-                MovieFormState.Saved,
-                MovieFormState.Deleted -> {
+                MovieFormState.Saved, MovieFormState.Deleted -> {
+                    setLoading(false)
                     findNavController().popBackStack()
                 }
 
                 is MovieFormState.Error -> {
-                    // binding.progress.visibility = View.GONE
-                    // Snackbar.make(binding.root, state.err.title, Snackbar.LENGTH_LONG).show()
+                    setLoading(false)
+                    Toast.makeText(requireContext(), state.err?.title, Toast.LENGTH_LONG)
                 }
             }
         }
@@ -99,5 +141,12 @@ class MovieUpsertFragment : Fragment(R.layout.fragment_movie_upsert) {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    private fun setLoading(loading: Boolean) {
+        binding.loading.isVisible = loading
+        binding.create.isEnabled = !loading
+        binding.titleLayout.isEnabled = !loading
+        binding.synopsisLayout.isEnabled = !loading
     }
 }

@@ -35,4 +35,5 @@
     <string name="add_picture">Add picture</string>
     <string name="save">Save</string>
     <string name="delete">Delete</string>
+    <string name="add_to_favorites">add to favorites</string>
 </resources>

@@ -65,8 +65,8 @@ class MovieDetailsFragment : Fragment(R.layout.fragment_movie_details) {
     private fun bindMovie(movie: MovieWithDetails?) {
         movie ?: return
 
-        binding.movieTitle.text = movie.movie.title
-        binding.movieSynopsis.text = movie.movie.synopsis
+        binding.title.text = movie.movie.title
+        binding.synopsis.text = movie.movie.synopsis
         binding.movieDirector.text = getString(R.string.movie_director, movie.movie.directorId ?: "Unknown")
         binding.movieGenres.text = movie.genres.joinToString(", ")
         binding.movieAge.text = getString(R.string.movie_age, movie.movie.minimumAge)
@@ -76,7 +76,7 @@ class MovieDetailsFragment : Fragment(R.layout.fragment_movie_details) {
             val imageLoader = createCoilImageLoader(binding.root.context)
             val request = ImageRequest.Builder(binding.root.context)
                 .data(posterUrl)
-                .target(binding.moviePoster)
+                .target(binding.picture)
                 .crossfade(true)
                 .build()
             imageLoader.enqueue(request)

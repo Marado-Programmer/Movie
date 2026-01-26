@@ -1,8 +1,9 @@
 @file:OptIn(ExperimentalUuidApi::class, ExperimentalTime::class)
-@file:UseContextualSerialization(Instant::class)
+@file:UseContextualSerialization(ByteArray::class)
 package pt.cravodeabril.movies.utils
 
 import androidx.room.TypeConverter
+import io.ktor.util.encodeBase64
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.UseContextualSerialization
 import kotlinx.serialization.descriptors.PrimitiveKind
@@ -10,31 +11,31 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import kotlin.io.encoding.Base64
 import kotlin.time.ExperimentalTime
-import kotlin.time.Instant
 import kotlin.uuid.ExperimentalUuidApi
 
-class InstantConverter {
+class ByteArrayConverter {
     @TypeConverter
-    fun fromInstant(value: Instant?): String? = value?.toString()
+    fun fromByteArray(value: ByteArray?): String? = value?.encodeBase64()
 
     @TypeConverter
-    fun toInstant(value: String?): Instant? = value?.let { Instant.parse(it) }
+    fun toByteArray(value: String?): ByteArray? = value?.let { Base64.decode(it) }
 }
 
-class InstantSerializer : KSerializer<Instant> {
+class ByteArraySerializer : KSerializer<ByteArray> {
     override val descriptor: SerialDescriptor =
-        PrimitiveSerialDescriptor("Instant", PrimitiveKind.STRING)
+        PrimitiveSerialDescriptor("ByteArray", PrimitiveKind.STRING)
 
     override fun serialize(
         encoder: Encoder,
-        value: Instant
+        value: ByteArray
     ) {
-        encoder.encodeString(value.toString())
+        encoder.encodeString(value.encodeBase64())
     }
 
-    override fun deserialize(decoder: Decoder): Instant {
-        val dateTime8601 = decoder.decodeString()
-        return Instant.parse(dateTime8601)
+    override fun deserialize(decoder: Decoder): ByteArray {
+        val base64 = decoder.decodeString()
+        return Base64.decode(base64)
     }
 }

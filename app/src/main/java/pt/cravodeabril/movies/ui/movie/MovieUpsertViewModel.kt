@@ -1,23 +1,27 @@
 package pt.cravodeabril.movies.ui.movie
 
 import android.app.Application
+import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import io.ktor.util.encodeBase64
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
-import pt.cravodeabril.movies.data.Resource
+import pt.cravodeabril.movies.App
 import pt.cravodeabril.movies.data.ProblemDetails
-import pt.cravodeabril.movies.data.local.AppDatabase
-import pt.cravodeabril.movies.data.repository.MovieRepository
+import pt.cravodeabril.movies.data.Resource
+import pt.cravodeabril.movies.data.remote.CreatePicture
 
 class MovieUpsertViewModel(app: Application, private val movieId: Long? = null) :
     AndroidViewModel(app) {
-    private val db = AppDatabase(app)
-    private val repository = MovieRepository(db.movieDao(), db.genreDao(), db.personDao())
+    private val appContainer = getApplication<App>().container
+
+    private val repository = appContainer.movieRepository
 
     val isEditMode: Boolean = movieId != null
 
@@ -25,6 +29,7 @@ class MovieUpsertViewModel(app: Application, private val movieId: Long? = null) 
 
     val title = MutableLiveData("")
     val synopsis = MutableLiveData("")
+    val picture = MutableLiveData<Uri>()
     val releaseDate = MutableLiveData<LocalDate>()
     val minimumAge = MutableLiveData(0)
     val directorId = MutableLiveData<Long?>()
@@ -91,19 +96,43 @@ class MovieUpsertViewModel(app: Application, private val movieId: Long? = null) 
                     minimumAge = minimumAge.value!!
                 )
             } else {
+                val data = picture.value?.let { uri ->
+                    val bytes = getApplication<App>().contentResolver.openInputStream(uri)?.use {
+                        it.readBytes()
+                    }
+
+                    // bytes.encodeBase64()
+                    bytes
+                }
+
                 repository.createMovie(
                     title = title.value!!,
                     synopsis = synopsis.value!!,
+                    releaseDate = releaseDate.value!!,
+                    minimumAge = minimumAge.value!!,
                     genres = selectedGenres.value!!.map { it.toInt() }.toSet(),
                     directorId = directorId.value,
-                    releaseDate = releaseDate.value!!,
-                    minimumAge = minimumAge.value!!
-                )
+                    pictures = data?.let {
+                        listOf(
+                            CreatePicture(
+                                filename = "${title.value!!}.jpg",
+                                data = it.encodeBase64(),
+                                mainPicture = true
+                            )
+                        )
+                    } ?: emptyList())
             }
 
             when (result) {
                 is Resource.Success -> _state.value = MovieFormState.Saved
-                is Resource.Error -> _state.value = MovieFormState.Error(result.problem)
+                is Resource.Error -> {
+                    _state.value = MovieFormState.Error(result.problem)
+                    Log.wtf("WTFIM.THROW", result.throwable.toString())
+                    Log.wtf("WTFIM.TITLE", result.problem?.title)
+                    Log.wtf("WTFIM.DETAIL", result.problem?.detail)
+                    Log.wtf("WTFIM.TYPE", result.problem?.type)
+                }
+
                 else -> {}
             }
         }
@@ -133,11 +162,11 @@ class MovieUpsertViewModel(app: Application, private val movieId: Long? = null) 
             return false
         }
 
-        if (releaseDate.value == null) {
-            _state.value =
-                MovieFormState.Error(ProblemDetails("400", "Release date is required", 400, ""))
-            return false
-        }
+//        if (releaseDate.value == null) {
+//            _state.value =
+//                MovieFormState.Error(ProblemDetails("400", "Release date is required", 400, ""))
+//            return false
+//        }
 
         return true
     }

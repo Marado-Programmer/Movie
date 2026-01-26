@@ -20,7 +20,8 @@ class AppContainer(context: Context) {
         MovieRepository(
             database.movieDao(),
             database.genreDao(),
-            database.personDao()
+            database.personDao(),
+            loginRepository
         )
     }
 }

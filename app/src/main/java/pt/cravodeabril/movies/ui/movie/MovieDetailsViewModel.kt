@@ -6,15 +6,15 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
-import pt.cravodeabril.movies.data.Resource
+import pt.cravodeabril.movies.App
 import pt.cravodeabril.movies.data.ProblemDetails
-import pt.cravodeabril.movies.data.local.AppDatabase
+import pt.cravodeabril.movies.data.Resource
 import pt.cravodeabril.movies.data.local.entity.MovieWithDetails
-import pt.cravodeabril.movies.data.repository.MovieRepository
 
 class MovieDetailsViewModel(app: Application) : AndroidViewModel(app) {
-    private val db = AppDatabase(app)
-    private val repository = MovieRepository(db.movieDao(), db.genreDao(), db.personDao())
+    private val appContainer = (app as App).container
+
+    private val repository = appContainer.movieRepository
 
     private val _movie = MutableLiveData<Resource<MovieWithDetails>>()
     val movie: LiveData<Resource<MovieWithDetails>> = _movie

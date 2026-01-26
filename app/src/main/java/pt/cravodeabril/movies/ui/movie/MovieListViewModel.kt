@@ -2,6 +2,7 @@
 
 package pt.cravodeabril.movies.ui.movie
 
+import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -13,8 +14,8 @@ import pt.cravodeabril.movies.data.Resource
 import pt.cravodeabril.movies.data.local.entity.MovieWithDetails
 import kotlin.uuid.ExperimentalUuidApi
 
-class MovieListViewModel(app: App) : AndroidViewModel(app) {
-    private val appContainer = app.container
+class MovieListViewModel(app: Application) : AndroidViewModel(app) {
+    private val appContainer = (app as App).container
 
     private val repository = appContainer.movieRepository
 
@@ -51,6 +52,9 @@ class MovieListViewModel(app: App) : AndroidViewModel(app) {
             }
         }
     }
+
+    fun moviePictureUrl(movieId: Long, pictureId: Long): String =
+        "http://10.0.2.2:8080/movies/$movieId/pictures/$pictureId"
 
     fun toggleFavorite(movieId: Long) {
         viewModelScope.launch {

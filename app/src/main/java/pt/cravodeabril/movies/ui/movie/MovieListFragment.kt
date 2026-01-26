@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.fragment.app.Fragment
@@ -21,7 +22,7 @@ import pt.cravodeabril.movies.data.Resource
 import pt.cravodeabril.movies.data.createCoilImageLoader
 import pt.cravodeabril.movies.data.local.entity.MovieWithDetails
 import pt.cravodeabril.movies.databinding.FragmentMovieListBinding
-import pt.cravodeabril.movies.databinding.ItemMovieBinding
+import pt.cravodeabril.movies.databinding.ItemMovieListBinding
 import pt.cravodeabril.movies.utils.diffCallbackOf
 
 class MovieListFragment : Fragment(R.layout.fragment_movie_list) {
@@ -45,6 +46,14 @@ class MovieListFragment : Fragment(R.layout.fragment_movie_list) {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        if (!(requireActivity().application as App).container.loginRepository.isLoggedIn) {
+            val action = MovieListFragmentDirections.actionMovieListFragmentToLogInFragment()
+
+            findNavController().navigate(action)
+            return
+        }
+
         _binding = FragmentMovieListBinding.bind(view)
 
         setupToolbar()
@@ -72,8 +81,13 @@ class MovieListFragment : Fragment(R.layout.fragment_movie_list) {
             }
         }
 
-        binding.create.setOnClickListener {
-            findNavController().navigate(MovieListFragmentDirections.actionMovieListFragmentToMovieCreateFragment())
+        if (false && (requireActivity().application as App).container.loginRepository.user?.role !== "admin") {
+            binding.create.visibility = View.GONE
+            binding.create.isClickable = false
+        } else {
+            binding.create.setOnClickListener {
+                findNavController().navigate(MovieListFragmentDirections.actionMovieListFragmentToMovieCreateFragment())
+            }
         }
     }
 
@@ -90,7 +104,7 @@ class MovieListFragment : Fragment(R.layout.fragment_movie_list) {
                     (requireActivity().application as App).container.loginRepository.logout()
 
                     findNavController().navigate(
-                        // MovieListFragmentDirections.actionMovieListFragmentToLoginFragment(),
+                        MovieListFragmentDirections.actionMovieListFragmentToLogInFragment(),
                         NavOptions.Builder().apply {
                             this.setPopUpTo(R.id.movieListFragment, true)
                         }.build()
@@ -110,7 +124,7 @@ class MovieListFragment : Fragment(R.layout.fragment_movie_list) {
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
             val inflater = LayoutInflater.from(parent.context)
-            val binding = ItemMovieBinding.inflate(inflater, parent, false)
+            val binding = ItemMovieListBinding.inflate(inflater, parent, false)
             return ViewHolder(binding)
         }
 
@@ -118,7 +132,8 @@ class MovieListFragment : Fragment(R.layout.fragment_movie_list) {
             holder.bind(getItem(position))
         }
 
-        inner class ViewHolder(binding: ItemMovieBinding) : RecyclerView.ViewHolder(binding.root) {
+        inner class ViewHolder(binding: ItemMovieListBinding) :
+            RecyclerView.ViewHolder(binding.root) {
             private var movie: MovieWithDetails? = null
 
             init {
@@ -133,31 +148,33 @@ class MovieListFragment : Fragment(R.layout.fragment_movie_list) {
                 }
             }
 
-            val movieTitle: TextView = binding.movieSynopsis
-            val movieSynopsis: TextView = binding.movieSynopsis
-            val moviePoster: ImageView = binding.moviePoster
-            val movieAge: TextView = binding.movieAge
+            val movieTitle: TextView = binding.title
+            val movieSynopsis: TextView = binding.synopsis
+            val moviePicture: ImageView = binding.picture
+            val movieFavorite: ImageButton = binding.favorite
 
             fun bind(movie: MovieWithDetails) {
                 this.movie = movie
 
                 movieTitle.text = movie.movie.title
                 movieSynopsis.text = movie.movie.synopsis
-                movieAge.text = getString(R.string.movie_age, movie.movie.minimumAge)
 
                 // Load poster
                 val mainPicture = movie.pictures.firstOrNull { it.mainPicture }
                 mainPicture?.let { picture ->
-                    val posterUrl =
-                        "http://10.0.2.2:8080/movies/${movie.movie.id}/pictures/${picture.id}"
+                    val posterUrl = viewModel.moviePictureUrl(movie.movie.id, picture.id)
                     val imageLoader = createCoilImageLoader(binding.root.context)
 
                     val request = ImageRequest.Builder(binding.root.context).data(posterUrl)
-                        .target(moviePoster).crossfade(true).build()
+                        .target(moviePicture).crossfade(true).build()
 
                     imageLoader.enqueue(request)
                 } ?: run {
-                    moviePoster.setImageResource(R.drawable.movie_border_24px)
+                    moviePicture.setImageResource(R.drawable.movie_border_24px)
+                }
+
+                movieFavorite.setOnClickListener {
+                    this.movie?.movie?.id?.let { id -> viewModel.toggleFavorite(id) }
                 }
             }
         }
