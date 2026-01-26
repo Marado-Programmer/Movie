@@ -2,7 +2,6 @@ package pt.cravodeabril.movies.ui.movie
 
 import android.app.Application
 import android.net.Uri
-import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -127,10 +126,6 @@ class MovieUpsertViewModel(app: Application, private val movieId: Long? = null) 
                 is Resource.Success -> _state.value = MovieFormState.Saved
                 is Resource.Error -> {
                     _state.value = MovieFormState.Error(result.problem)
-                    Log.wtf("WTFIM.THROW", result.throwable.toString())
-                    Log.wtf("WTFIM.TITLE", result.problem?.title)
-                    Log.wtf("WTFIM.DETAIL", result.problem?.detail)
-                    Log.wtf("WTFIM.TYPE", result.problem?.type)
                 }
 
                 else -> {}
