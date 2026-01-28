@@ -56,10 +56,29 @@ class MovieListViewModel(app: Application) : AndroidViewModel(app) {
     fun moviePictureUrl(movieId: Long, pictureId: Long): String =
         "http://10.0.2.2:8080/movies/$movieId/pictures/$pictureId"
 
+    suspend fun isFavorite(movieId: Long): Boolean {
+        return repository.isFavorite(movieId) ?: false
+    }
+
     fun toggleFavorite(movieId: Long) {
         viewModelScope.launch {
-            repository.isFavorite(movieId)
-                ?.let { toggle -> repository.toggleFavorite(movieId, toggle) }
+            val current = repository.isFavorite(movieId) ?: return@launch
+            val result = repository.setFavorite(movieId, !current)
+
+            if (result is Resource.Error) {
+                // TODO
+            }
         }
     }
+
+    fun setFavorite(movieId: Long, favorite: Boolean) {
+        viewModelScope.launch {
+            repository.setFavorite(movieId, favorite)
+            val result = repository.setFavorite(movieId, favorite)
+            if (result is Resource.Success) {
+                refresh()
+            }
+        }
+    }
+
 }

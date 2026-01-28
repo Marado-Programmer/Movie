@@ -1,5 +1,6 @@
 package pt.cravodeabril.movies.ui
 
+import android.content.Context
 import android.os.Bundle
 import android.view.View
 import androidx.core.content.edit
@@ -20,9 +21,9 @@ class LoginFragment : Fragment(R.layout.fragment_login) {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         _binding = FragmentLoginBinding.bind(view)
 
-        requireActivity().getSharedPreferences("prefs", 0).apply {
-                val username = getString("username", "")
-                val password = getString("password", "")
+        requireActivity().getSharedPreferences("prefs", Context.MODE_PRIVATE).apply {
+                val username = getString("username", "") ?: ""
+                val password = getString("password", "") ?: ""
 
                 if (username != "" && password != "") {
                     setLoading(true)
@@ -33,7 +34,7 @@ class LoginFragment : Fragment(R.layout.fragment_login) {
                     lifecycleScope.launch {
                         val result =
                             (requireActivity().application as App).container.loginRepository.login(
-                                username!!, password!!
+                                username, password
                             )
 
                         setLoading(false)
@@ -58,7 +59,7 @@ class LoginFragment : Fragment(R.layout.fragment_login) {
                     binding.username.text.toString(), binding.password.text.toString()
                 )
 
-                requireActivity().getSharedPreferences("prefs", 0).edit {
+                requireActivity().getSharedPreferences("prefs", Context.MODE_PRIVATE).edit {
                         putString("username", binding.username.text.toString())
                         putString("password", binding.password.text.toString())
                     }

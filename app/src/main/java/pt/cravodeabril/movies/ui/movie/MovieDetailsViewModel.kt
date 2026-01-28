@@ -44,7 +44,7 @@ class MovieDetailsViewModel(app: Application) : AndroidViewModel(app) {
         if (result is Resource.Success) {
             val id = result.data.movie.id
             viewModelScope.launch {
-                repository.isFavorite(id)?.let { toggle -> repository.toggleFavorite(id, toggle) }
+                repository.isFavorite(id)?.let { toggle -> repository.setFavorite(id, toggle) }
             }
         }
     }

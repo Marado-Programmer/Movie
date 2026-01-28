@@ -5,6 +5,7 @@ import android.view.View
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.navArgs
+import coil3.SingletonImageLoader
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import coil3.request.target
@@ -73,13 +74,11 @@ class MovieDetailsFragment : Fragment(R.layout.fragment_movie_details) {
         val mainPicture = movie.pictures.firstOrNull { it.mainPicture }
         mainPicture?.let {
             val posterUrl = "http://10.0.2.2:8080/movies/${movie.movie.id}/pictures/${it.id}"
-            val imageLoader = createCoilImageLoader(binding.root.context)
             val request = ImageRequest.Builder(binding.root.context)
                 .data(posterUrl)
                 .target(binding.picture)
-                .crossfade(true)
                 .build()
-            imageLoader.enqueue(request)
+            SingletonImageLoader.get(requireContext()).enqueue(request)
         }
     }
 

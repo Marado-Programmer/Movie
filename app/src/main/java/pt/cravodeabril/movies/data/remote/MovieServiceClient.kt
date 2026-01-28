@@ -1,5 +1,6 @@
 package pt.cravodeabril.movies.data.remote
 
+import android.util.Log
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.android.Android
@@ -12,6 +13,7 @@ import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.URLProtocol
 import io.ktor.http.contentType
@@ -37,8 +39,6 @@ object MovieServiceClient {
 
 
     fun setCredentials(username: String, password: String) = synchronized(lock) {
-        assert(username.isNotBlank()) { "username is blank" }
-        assert(password.isNotBlank()) { "password is blank" }
         this.credentials = Credentials(username, password)
     }
 
@@ -178,11 +178,33 @@ object MovieServiceClient {
         }
     }
 
-    suspend fun markAsFavorite(movieId: Long, value: Boolean) {
-        client.put("/movies/$movieId/mark-as-favorite") {
-            parameter("value", value)
+    suspend fun markAsFavorite(
+        movieId: Long,
+        value: Boolean
+    ): Resource<Unit> {
+        return try {
+            val response = client.put("/movies/$movieId/mark-as-favorite") {
+                parameter("value", value)
+            }
+            Log.d("BODY", response.toString())
+            if (response.status.isSuccess()) {
+                Resource.Success(Unit)
+            } else {
+                Resource.Error(response.body())
+            }
+        } catch (e: Exception) {
+            Resource.Error(
+                e,
+                ProblemDetails(
+                    type = "Network",
+                    title = "Favorite failed",
+                    status = 500,
+                    detail = e.message ?: "Unknown"
+                )
+            )
         }
     }
+
 
     suspend fun createMovie(cmd: CreateMovieCommand): Resource<MovieDetail> {
         return try {

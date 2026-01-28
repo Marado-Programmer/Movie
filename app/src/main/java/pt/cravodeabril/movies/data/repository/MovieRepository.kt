@@ -269,18 +269,28 @@ class MovieRepository(
         }
     }
 
-    suspend fun toggleFavorite(movieId: Long, favorite: Boolean) {
+    suspend fun setFavorite(
+        movieId: Long,
+        favorite: Boolean
+    ): Resource<Unit> {
         val userId = login.user?.id
+            ?: return Resource.Error(
+                problem = ProblemDetails("Auth", "Not logged in", 401, "")
+            )
 
-        if (userId != null) {
+        val result = MovieServiceClient.markAsFavorite(movieId, favorite)
+
+        if (result is Resource.Success) {
             if (favorite) {
                 movieDao.addFavorite(UserFavoriteEntity(userId, movieId))
             } else {
                 movieDao.removeFavorite(userId, movieId)
             }
-            MovieServiceClient.markAsFavorite(movieId, favorite)
         }
+
+        return result
     }
+
 
     suspend fun isFavorite(movieId: Long): Boolean? {
         val userId = login.user?.id

@@ -12,7 +12,7 @@ class App : Application() {
         super.onCreate()
         container = AppContainer(this)
         SingletonImageLoader.setSafe {
-            createCoilImageLoader(it)
+            createCoilImageLoader(it, container.loginRepository)
         }
     }
 }

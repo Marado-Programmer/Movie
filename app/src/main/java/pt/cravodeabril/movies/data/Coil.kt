@@ -8,36 +8,30 @@ import coil3.request.crossfade
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Response
+import pt.cravodeabril.movies.data.repository.LoginRepository
 
-class BasicAuthInterceptor(private val context: Context) : Interceptor {
+class BasicAuthInterceptor(private val context: Context, val credentials: LoginRepository) :
+    Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-        val username = prefs.getString("username", "") ?: ""
-        val password = prefs.getString("password", "") ?: ""
+        val username = credentials.user?.username ?: prefs.getString("username", "") ?: ""
+        val password = credentials.user?.username ?: prefs.getString("password", "") ?: ""
         val credentials = "$username:$password"
         val auth = "Basic " + Base64.encodeToString(credentials.toByteArray(), Base64.NO_WRAP)
 
-        val newRequest = chain.request().newBuilder()
-            .header("Authorization", auth)
-            .build()
+        val newRequest = chain.request().newBuilder().header("Authorization", auth).build()
 
         return chain.proceed(newRequest)
     }
 }
 
-fun createCoilImageLoader(context: Context): ImageLoader {
-    return ImageLoader.Builder(context)
-        .crossfade(true)
-        .components {
+fun createCoilImageLoader(context: Context, credentials: LoginRepository): ImageLoader {
+    return ImageLoader.Builder(context).crossfade(true).components {
             add(
                 OkHttpNetworkFetcherFactory(
-                    callFactory = {
-                        OkHttpClient.Builder()
-                            .addInterceptor(BasicAuthInterceptor(context))
-                            .build()
-                    }
-                )
-            )
-        }
-        .build()
+                callFactory = {
+                    OkHttpClient.Builder()
+                        .addInterceptor(BasicAuthInterceptor(context, credentials)).build()
+                }))
+        }.build()
 }
