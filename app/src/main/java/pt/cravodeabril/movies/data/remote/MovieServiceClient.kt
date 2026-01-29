@@ -28,6 +28,7 @@ import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.contextual
 import pt.cravodeabril.movies.data.ProblemDetails
 import pt.cravodeabril.movies.data.Resource
+import pt.cravodeabril.movies.data.local.entity.GenreEntity
 import pt.cravodeabril.movies.utils.ByteArraySerializer
 import pt.cravodeabril.movies.utils.InstantSerializer
 import java.io.File
@@ -70,6 +71,38 @@ object MovieServiceClient {
                 }
             }
         }
+    }
+
+    fun getMovie(movieId: Long): Flow<Resource<MovieDetail>> = flow {
+        emit(Resource.Loading)
+        try {
+            val response = client.get("/movies/$movieId")
+            if (response.status.isSuccess()) {
+                emit(Resource.Success(response.body()))
+            } else {
+                emit(Resource.Error(response.body()))
+            }
+        } catch (e: Exception) {
+            emit(
+                Resource.Error(
+                    e, problem = ProblemDetails(
+                        type = "Network",
+                        title = "Network error",
+                        status = 500,
+                        detail = e.message ?: "Unknown"
+                    )
+                )
+            )
+        }
+    }
+
+    suspend fun getMoviePicture(
+        movieId: Long, pictureId: Long
+    ): Flow<Resource<FileRepresentation>>? {
+        val response = client.get("/movies/$movieId/pictures/$pictureId")
+        val bytes = response.body<ByteArray>()
+        // FileOutputStream(file).use { it.write(bytes) }
+        return null
     }
 
     suspend fun getMovies(
@@ -116,38 +149,6 @@ object MovieServiceClient {
                 )
             )
         }
-    }
-
-    fun getMovie(movieId: Long): Flow<Resource<MovieDetail>> = flow {
-        emit(Resource.Loading)
-        try {
-            val response = client.get("/movies/$movieId")
-            if (response.status.isSuccess()) {
-                emit(Resource.Success(response.body()))
-            } else {
-                emit(Resource.Error(response.body()))
-            }
-        } catch (e: Exception) {
-            emit(
-                Resource.Error(
-                    e, problem = ProblemDetails(
-                        type = "Network",
-                        title = "Network error",
-                        status = 500,
-                        detail = e.message ?: "Unknown"
-                    )
-                )
-            )
-        }
-    }
-
-    suspend fun getMoviePicture(
-        movieId: Long, pictureId: Long
-    ): Flow<Resource<FileRepresentation>>? {
-        val response = client.get("/movies/$movieId/pictures/$pictureId")
-        val bytes = response.body<ByteArray>()
-        // FileOutputStream(file).use { it.write(bytes) }
-        return null
     }
 
     fun getMovieRatings(
@@ -269,6 +270,179 @@ object MovieServiceClient {
         }
     }
 
+    suspend fun getGenres(assignedOnly: Boolean?): Resource<List<Genre>> {
+        return try {
+            val response = client.get("/genres") {
+                assignedOnly?.let { parameter("assignedOnly", it) }
+            }
+            if (response.status.isSuccess()) {
+                Resource.Success(response.body())
+            } else {
+                Resource.Error(response.body())
+            }
+        } catch (e: Exception) {
+            Resource.Error(
+                e, problem = ProblemDetails(
+                    type = "Network",
+                    title = "Network error",
+                    status = 500,
+                    detail = e.message ?: "Unknown"
+                )
+            )
+        }
+    }
+
+    suspend fun deleteGenre(id: Long): Resource<Unit> {
+        return try {
+            val response = client.delete("/genres/$id")
+            if (response.status.isSuccess()) Resource.Success(Unit)
+            else Resource.Error(response.body())
+        } catch (e: Exception) {
+            Resource.Error(
+                e, ProblemDetails("Network", "Delete failed", 500, e.message ?: "")
+            )
+        }
+    }
+
+    suspend fun createGenres(cmd: CreateGenresCommand): Resource<List<Genre>> {
+        return try {
+            val response = client.post("/genres") {
+                setBody(cmd.genres)
+            }
+
+            if (response.status.isSuccess()) Resource.Success(response.body())
+            else Resource.Error(response.body())
+        } catch (e: Exception) {
+            Resource.Error(
+                e, ProblemDetails("Network", "Create failed", 500, e.message ?: "")
+            )
+        }
+    }
+
+    suspend fun updateGenre(cmd: UpdateGenreCommand): Resource<Genre> {
+        return try {
+            val response = client.put("/genres") {
+                setBody(cmd)
+            }
+
+            Log.v("UP", response.toString())
+            if (response.status.isSuccess()) Resource.Success(response.body())
+            else Resource.Error(response.body())
+        } catch (e: Exception) {
+            Resource.Error(
+                e, ProblemDetails("Network", "Update failed", 500, e.message ?: "")
+            )
+        }
+    }
+
+    suspend fun getPeople(): Resource<List<PersonSimple>> {
+        return try {
+            val response = client.get("/people")
+            if (response.status.isSuccess()) {
+                Resource.Success(response.body())
+            } else {
+                Resource.Error(response.body())
+            }
+        } catch (e: Exception) {
+            Resource.Error(
+                e, problem = ProblemDetails(
+                    type = "Network",
+                    title = "Network error",
+                    status = 500,
+                    detail = e.message ?: "Unknown"
+                )
+            )
+        }
+    }
+
+    suspend fun getPerson(id: Long): Resource<PersonDetail> {
+        return try {
+            val response = client.get("/people/$id")
+            if (response.status.isSuccess()) {
+                Resource.Success(response.body())
+            } else {
+                Resource.Error(response.body())
+            }
+        } catch (e: Exception) {
+            Resource.Error(
+                e, problem = ProblemDetails(
+                    type = "Network",
+                    title = "Network error",
+                    status = 500,
+                    detail = e.message ?: "Unknown"
+                )
+            )
+        }
+    }
+
+    suspend fun deletePerson(id: Long): Resource<Unit> {
+        return try {
+            val response = client.delete("/people/$id")
+            if (response.status.isSuccess()) Resource.Success(Unit)
+            else Resource.Error(response.body())
+        } catch (e: Exception) {
+            Resource.Error(
+                e, ProblemDetails("Network", "Delete failed", 500, e.message ?: "")
+            )
+        }
+    }
+
+    suspend fun createPerson(cmd: CreatePersonCommand): Resource<Person> {
+        return try {
+            val response = client.post("/people") {
+                setBody(cmd)
+            }
+
+            if (response.status.isSuccess()) Resource.Success(response.body())
+            else Resource.Error(response.body())
+        } catch (e: Exception) {
+            Resource.Error(
+                e, ProblemDetails("Network", "Create failed", 500, e.message ?: "")
+            )
+        }
+    }
+
+    suspend fun updatePerson(cmd: UpdatePersonCommand): Resource<Person> {
+        return try {
+            val response = client.put("/people") {
+                setBody(cmd)
+            }
+            if (response.status.isSuccess()) Resource.Success(response.body())
+            else Resource.Error(response.body())
+        } catch (e: Exception) {
+            Resource.Error(
+                e, ProblemDetails("Network", "Update failed", 500, e.message ?: "")
+            )
+        }
+    }
+
+    suspend fun createPersonPictures(cmd: AddPicturesToPersonCommand): Resource<Person> {
+        return try {
+            val response = client.put("/people/${cmd.personId}/add-pictures") {
+                setBody(cmd.pictures)
+            }
+            if (response.status.isSuccess()) Resource.Success(response.body())
+            else Resource.Error(response.body())
+        } catch (e: Exception) {
+            Resource.Error(
+                e, ProblemDetails("Network", "Update failed", 500, e.message ?: "")
+            )
+        }
+    }
+
+    suspend fun removePersonPictures(cmd: RemovePicturesFromPersonCommand): Resource<Person> {
+        return try {
+            val response = client.put("/people/${cmd.personId}/add-pictures") {
+                setBody(cmd.pictures.toIntArray())
+            }
+            if (response.status.isSuccess()) Resource.Success(response.body())
+            else Resource.Error(response.body())
+        } catch (e: Exception) {
+            Resource.Error(
+                e, ProblemDetails("Network", "Update failed", 500, e.message ?: "")
+            )
+        }
+    }
 }
 
 data class Credentials(
@@ -364,6 +538,7 @@ class CreatePicture(
     val mainPicture: Boolean = false
 )
 
+@Serializable
 data class UpdateMovieCommand(
     val id: Int,
     val title: String,
@@ -373,3 +548,39 @@ data class UpdateMovieCommand(
     val releaseDate: LocalDate,
     val minimumAge: Int = 0
 )
+
+@Serializable
+data class CreateGenre(val name: String, val description: String?)
+
+@Serializable
+data class CreateGenresCommand(val genres: List<CreateGenre>)
+
+@Serializable
+class UpdateGenreCommand(val id: Int, val name: String, val description: String?)
+
+@Serializable
+class PersonSimple(val id: Int, val name: String, val dateOfBirth: LocalDate?, val picture: PictureInfo?)
+@Serializable
+class Person(val id: Int, val name: String, val dateOfBirth: LocalDate?, val pictures: List<PictureInfo>)
+@Serializable
+class PersonDetail(
+    val id: Int,
+    val name: String,
+    val dateOfBirth: LocalDate?,
+    val pictures: List<PictureInfo>,
+    val directedMovies: List<Directed>,
+    val roles: List<Role>
+) {
+    @Serializable
+    class Directed(val id: Int, val title: String, val releaseDate: LocalDate, val picture: PictureInfo?)
+    @Serializable
+    class Role(val movieId: Int, val title: String, val releaseDate: LocalDate, val character: String)
+}
+@Serializable
+data class CreatePersonCommand(val name: String, val dateOfBirth: LocalDate?, val pictures: List<CreatePicture>)
+@Serializable
+data class UpdatePersonCommand(val id: Int, val name: String, val dateOfBirth: LocalDate?)
+@Serializable
+data class AddPicturesToPersonCommand(val personId: Int, val pictures: List<CreatePicture>)
+@Serializable
+data class RemovePicturesFromPersonCommand(val personId: Int, val pictures: Set<Int>)

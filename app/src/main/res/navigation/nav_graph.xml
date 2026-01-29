@@ -3,14 +3,13 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/nav_graph.xml"
-    app:startDestination="@id/movieListFragment">
+    app:startDestination="@id/personListFragment">
 
     <fragment
         android:id="@+id/loginFragment"
         android:name="pt.cravodeabril.movies.ui.LoginFragment"
         android:label="fragment_login"
-        tools:layout="@layout/fragment_login">
-    </fragment>
+        tools:layout="@layout/fragment_login" />
 
     <fragment
         android:id="@+id/movieListFragment"
@@ -19,9 +18,9 @@
         tools:layout="@layout/fragment_movie_list">
         <argument
             android:name="filter"
+            android:defaultValue=""
             app:argType="string"
-            app:nullable="true"
-            android:defaultValue="" />
+            app:nullable="true" />
         <argument
             android:name="genre"
             android:defaultValue="@null"
@@ -84,8 +83,8 @@
         tools:layout="@layout/fragment_movie_upsert">
         <argument
             android:name="movieId"
-            app:argType="long"
-            android:defaultValue="-1L" />
+            android:defaultValue="-1L"
+            app:argType="long" />
         <action
             android:id="@+id/action_movieUpsertFragment_to_movieDetailsFragment"
             app:destination="@id/movieDetailsFragment">
@@ -95,6 +94,61 @@
         </action>
         <action
             android:id="@+id/action_movieUpsertFragment_to_logInFragment"
+            app:destination="@id/loginFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/genreListFragment"
+        android:name="pt.cravodeabril.movies.ui.genre.GenreListFragment"
+        tools:layout="@layout/fragment_genre_list">
+        <action
+            android:id="@+id/action_genreListUpsertFragment_to_genreCreateFragment"
+            app:destination="@+id/genreUpsertFragment" />
+        <action
+            android:id="@+id/action_genreListUpsertFragment_to_genreEditFragment"
+            app:destination="@+id/genreUpsertFragment">
+            <argument
+                android:name="id"
+                app:argType="long" />
+        </action>
+    </fragment>
+    <fragment
+        android:id="@+id/genreUpsertFragment"
+        android:name="pt.cravodeabril.movies.ui.genre.GenreUpsertFragment"
+        tools:layout="@layout/fragment_genre_upsert">
+        <argument
+            android:name="id"
+            app:argType="long"
+            android:defaultValue="-1L"/>
+
+        <action
+            android:id="@+id/action_genreUpsertFragment_to_logInFragment"
+            app:destination="@id/loginFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/personListFragment"
+        android:name="pt.cravodeabril.movies.ui.person.PersonListFragment"
+        tools:layout="@layout/fragment_person_list">
+        <action
+            android:id="@+id/action_personListUpsertFragment_to_personCreateFragment"
+            app:destination="@+id/personUpsertFragment" />
+        <action
+            android:id="@+id/action_personListUpsertFragment_to_personEditFragment"
+            app:destination="@+id/personUpsertFragment">
+            <argument
+                android:name="id"
+                app:argType="long" />
+        </action>
+    </fragment>
+    <fragment
+        android:id="@+id/personUpsertFragment"
+        android:name="pt.cravodeabril.movies.ui.person.PersonUpsertFragment"
+        tools:layout="@layout/fragment_person_upsert">
+        <argument
+            android:name="id"
+            app:argType="long"
+            android:defaultValue="-1L"/>
+        <action
+            android:id="@+id/action_personUpsertFragment_to_logInFragment"
             app:destination="@id/loginFragment" />
     </fragment>
 </navigation>

@@ -7,11 +7,9 @@ import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.navArgs
 import coil3.SingletonImageLoader
 import coil3.request.ImageRequest
-import coil3.request.crossfade
 import coil3.request.target
 import pt.cravodeabril.movies.R
 import pt.cravodeabril.movies.data.Resource
-import pt.cravodeabril.movies.data.createCoilImageLoader
 import pt.cravodeabril.movies.data.local.entity.MovieWithDetails
 import pt.cravodeabril.movies.databinding.FragmentMovieDetailsBinding
 
@@ -59,8 +57,8 @@ class MovieDetailsFragment : Fragment(R.layout.fragment_movie_details) {
         }
 
         // Edit (admin only)
-        binding.editButton.setOnClickListener {
-        }
+//        binding.editButton.setOnClickListener {
+//        }
     }
 
     private fun bindMovie(movie: MovieWithDetails?) {

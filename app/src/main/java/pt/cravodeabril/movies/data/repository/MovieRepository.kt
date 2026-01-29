@@ -12,21 +12,32 @@ import pt.cravodeabril.movies.data.local.dao.GenreDao
 import pt.cravodeabril.movies.data.local.dao.MovieDao
 import pt.cravodeabril.movies.data.local.dao.PersonDao
 import pt.cravodeabril.movies.data.local.entity.CastMemberEntity
+import pt.cravodeabril.movies.data.local.entity.FullPersonEntity
 import pt.cravodeabril.movies.data.local.entity.GenreEntity
 import pt.cravodeabril.movies.data.local.entity.MovieEntity
 import pt.cravodeabril.movies.data.local.entity.MovieGenreCrossRef
 import pt.cravodeabril.movies.data.local.entity.MovieWithDetails
 import pt.cravodeabril.movies.data.local.entity.PersonEntity
+import pt.cravodeabril.movies.data.local.entity.PersonPictureEntity
 import pt.cravodeabril.movies.data.local.entity.PictureEntity
 import pt.cravodeabril.movies.data.local.entity.UserFavoriteEntity
 import pt.cravodeabril.movies.data.local.entity.UserRatingEntity
+import pt.cravodeabril.movies.data.remote.AddPicturesToPersonCommand
+import pt.cravodeabril.movies.data.remote.CreateGenre
+import pt.cravodeabril.movies.data.remote.CreateGenresCommand
 import pt.cravodeabril.movies.data.remote.CreateMovieCommand
+import pt.cravodeabril.movies.data.remote.CreatePersonCommand
 import pt.cravodeabril.movies.data.remote.CreatePicture
+import pt.cravodeabril.movies.data.remote.Genre
 import pt.cravodeabril.movies.data.remote.MovieDetail
 import pt.cravodeabril.movies.data.remote.MovieServiceClient
 import pt.cravodeabril.movies.data.remote.MovieSimple
+import pt.cravodeabril.movies.data.remote.Person
+import pt.cravodeabril.movies.data.remote.RemovePicturesFromPersonCommand
 import pt.cravodeabril.movies.data.remote.RoleAssignment
+import pt.cravodeabril.movies.data.remote.UpdateGenreCommand
 import pt.cravodeabril.movies.data.remote.UpdateMovieCommand
+import pt.cravodeabril.movies.data.remote.UpdatePersonCommand
 import kotlin.math.roundToInt
 
 class MovieRepository(
@@ -188,7 +199,7 @@ class MovieRepository(
                 .map { UserFavoriteEntity(userId, it.id.toLong()) })
         }
 
-        personDao.upsertPersons(apiMovies.mapNotNull { it.director }.distinctBy { it.personId }
+        personDao.upsertPeople(apiMovies.mapNotNull { it.director }.distinctBy { it.personId }
             .map { PersonEntity(it.personId.toLong(), it.name, dateOfBirth = null) })
     }
 
@@ -233,7 +244,7 @@ class MovieRepository(
         if (director != null) {
             personDao.upsertPerson(director)
         }
-        personDao.upsertPersons(
+        personDao.upsertPeople(
             apiMovie.cast.distinct().map {
                 PersonEntity(
                     id = it.personId.toLong(), name = it.name, dateOfBirth = null
@@ -270,13 +281,11 @@ class MovieRepository(
     }
 
     suspend fun setFavorite(
-        movieId: Long,
-        favorite: Boolean
+        movieId: Long, favorite: Boolean
     ): Resource<Unit> {
-        val userId = login.user?.id
-            ?: return Resource.Error(
-                problem = ProblemDetails("Auth", "Not logged in", 401, "")
-            )
+        val userId = login.user?.id ?: return Resource.Error(
+            problem = ProblemDetails("Auth", "Not logged in", 401, "")
+        )
 
         val result = MovieServiceClient.markAsFavorite(movieId, favorite)
 
@@ -382,6 +391,249 @@ class MovieRepository(
                 movieDao.clearMovieGenres(movieId)
                 movieDao.deleteMovie(movieId)
                 Resource.Success(Unit)
+            }
+
+            is Resource.Error -> result
+
+            else -> Resource.Error(
+                problem = ProblemDetails("Unknown", "Unexpected state", 500, "")
+            )
+        }
+    }
+
+    fun observeGenres(assignedOnly: Boolean? = null): Flow<List<GenreEntity>> {
+        return if (assignedOnly == true) genreDao.observeGenres()
+        else genreDao.observeGenres()
+    }
+
+    suspend fun refreshGenres(assignedOnly: Boolean? = false): Resource<Unit> {
+        val result = MovieServiceClient.getGenres(assignedOnly)
+        return when (result) {
+            is Resource.Success -> {
+                persistGenres(result.data)
+                Resource.Success(Unit)
+            }
+
+            is Resource.Error -> result
+            else -> Resource.Error(
+                problem = ProblemDetails("Unknown", "Unexpected state", 500, "")
+            )
+        }
+    }
+
+    @Transaction
+    private suspend fun persistGenres(genres: List<Genre>) {
+        val userId = login.user?.id
+
+        val genres = genres.map {
+            GenreEntity(
+                id = it.id.toLong(),
+                name = it.name,
+                description = it.description,
+                averageRating = 0f
+            )
+        }
+
+        genreDao.upsertGenres(genres)
+    }
+
+    suspend fun deleteGenre(id: Long): Resource<Unit> {
+        return when (val result = MovieServiceClient.deleteGenre(id)) {
+            is Resource.Success -> {
+                genreDao.deleteGenre(id)
+                Resource.Success(Unit)
+            }
+
+            is Resource.Error -> result
+
+            else -> Resource.Error(
+                problem = ProblemDetails("Unknown", "Unexpected state", 500, "")
+            )
+        }
+    }
+
+    suspend fun createGenre(
+        name: String,
+        description: String?,
+    ): Resource<List<Genre>> {
+        val command = CreateGenresCommand(
+            listOf(
+                CreateGenre(name = name, description = description)
+            )
+        )
+
+        val result = MovieServiceClient.createGenres(command)
+
+        return when (result) {
+            is Resource.Success -> {
+                persistGenres(result.data)
+                Resource.Success(result.data)
+            }
+
+            is Resource.Error -> result
+
+            else -> Resource.Error(
+                problem = ProblemDetails("Unknown", "Unexpected state", 500, "")
+            )
+        }
+    }
+
+    suspend fun updateGenre(
+        id: Long,
+        name: String,
+        description: String?,
+    ): Resource<Genre> {
+
+        val command = UpdateGenreCommand(id = id.toInt(), name = name, description = description)
+
+        return when (val result = MovieServiceClient.updateGenre(command)) {
+            is Resource.Success -> {
+                persistGenres(listOf(result.data))
+                Resource.Success(result.data)
+            }
+
+            is Resource.Error -> result
+
+            else -> Resource.Error(
+                problem = ProblemDetails("Unknown", "Unexpected state", 500, "")
+            )
+        }
+    }
+
+    fun observePeople(): Flow<List<FullPersonEntity>> {
+        return personDao.observePeople()
+    }
+
+    suspend fun refreshPeople(): Resource<Unit> {
+        val result = MovieServiceClient.getPeople()
+        return when (result) {
+            is Resource.Success -> {
+                persistPeople(result.data.map {
+                    Person(
+                        id = it.id,
+                        name = it.name,
+                        dateOfBirth = it.dateOfBirth,
+                        pictures = it.picture?.let { pic -> listOf(pic) } ?: listOf())
+                })
+                Resource.Success(Unit)
+            }
+
+            is Resource.Error -> result
+            else -> Resource.Error(
+                problem = ProblemDetails("Unknown", "Unexpected state", 500, "")
+            )
+        }
+    }
+
+    @Transaction
+    private suspend fun persistPeople(people: List<Person>) {
+        val userId = login.user?.id
+
+        personDao.upsertPeople(people.map {
+            PersonEntity(
+                id = it.id.toLong(), name = it.name, dateOfBirth = it.dateOfBirth
+            )
+        })
+
+        personDao.upsertPictures(people.flatMap {
+            it.pictures.map { pic ->
+                PersonPictureEntity(
+                    id = pic.id.toLong(),
+                    personId = it.id.toLong(),
+                    filename = pic.filename,
+                    contentType = pic.contentType,
+                    mainPicture = pic.mainPicture,
+                    description = pic.description,
+                )
+            }
+        })
+    }
+
+    suspend fun deletePerson(id: Long): Resource<Unit> {
+        return when (val result = MovieServiceClient.deletePerson(id)) {
+            is Resource.Success -> {
+                personDao.deletePerson(id)
+                Resource.Success(Unit)
+            }
+
+            is Resource.Error -> result
+
+            else -> Resource.Error(
+                problem = ProblemDetails("Unknown", "Unexpected state", 500, "")
+            )
+        }
+    }
+
+    suspend fun createPerson(
+        name: String, dateOfBirth: LocalDate?, pictures: List<CreatePicture>
+    ): Resource<Person> {
+        val command = CreatePersonCommand(name, dateOfBirth, pictures)
+
+        val result = MovieServiceClient.createPerson(command)
+
+        return when (result) {
+            is Resource.Success -> {
+                persistPeople(listOf(result.data))
+                Resource.Success(result.data)
+            }
+
+            is Resource.Error -> result
+
+            else -> Resource.Error(
+                problem = ProblemDetails("Unknown", "Unexpected state", 500, "")
+            )
+        }
+    }
+
+    suspend fun updatePerson(
+        id: Long, name: String, dateOfBirth: LocalDate?
+    ): Resource<Person> {
+
+        val command = UpdatePersonCommand(id = id.toInt(), name = name, dateOfBirth = dateOfBirth)
+
+        return when (val result = MovieServiceClient.updatePerson(command)) {
+            is Resource.Success -> {
+                persistPeople(listOf(result.data))
+                Resource.Success(result.data)
+            }
+
+            is Resource.Error -> result
+
+            else -> Resource.Error(
+                problem = ProblemDetails("Unknown", "Unexpected state", 500, "")
+            )
+        }
+    }
+
+    @Transaction
+    suspend fun updatePersonPicture(
+        id: Long, picture: CreatePicture
+    ): Resource<Person> {
+        val command = AddPicturesToPersonCommand(id.toInt(), listOf(picture))
+
+        return when (val result = MovieServiceClient.createPersonPictures(command)) {
+            is Resource.Success -> {
+                persistPeople(listOf(result.data))
+
+                val command = RemovePicturesFromPersonCommand(
+                    id.toInt(),
+                    personDao.observePictures().first().map {
+                        it.id.toInt()
+                    }.toSet()
+                )
+
+                return when (val result = MovieServiceClient.removePersonPictures(command)) {
+                    is Resource.Success -> {
+                        command.pictures.forEach { personDao.deletePicture(it.toLong()) }
+                        Resource.Success(result.data)
+                    }
+
+                    is Resource.Error -> result
+
+                    else -> Resource.Error(
+                        problem = ProblemDetails("Unknown", "Unexpected state", 500, "")
+                    )
+                }
             }
 
             is Resource.Error -> result

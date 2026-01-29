@@ -14,6 +14,7 @@ import pt.cravodeabril.movies.data.local.entity.GenreEntity
 import pt.cravodeabril.movies.data.local.entity.MovieEntity
 import pt.cravodeabril.movies.data.local.entity.MovieGenreCrossRef
 import pt.cravodeabril.movies.data.local.entity.PersonEntity
+import pt.cravodeabril.movies.data.local.entity.PersonPictureEntity
 import pt.cravodeabril.movies.data.local.entity.PictureEntity
 import pt.cravodeabril.movies.data.local.entity.UserEntity
 import pt.cravodeabril.movies.data.local.entity.UserFavoriteEntity
@@ -22,7 +23,7 @@ import pt.cravodeabril.movies.utils.InstantConverter
 import pt.cravodeabril.movies.utils.LocalDateConverter
 
 @Database(
-    entities = [MovieEntity::class, PictureEntity::class, MovieGenreCrossRef::class, CastMemberEntity::class, UserRatingEntity::class, UserFavoriteEntity::class, GenreEntity::class, PersonEntity::class, UserEntity::class],
+    entities = [MovieEntity::class, PictureEntity::class, MovieGenreCrossRef::class, CastMemberEntity::class, UserRatingEntity::class, UserFavoriteEntity::class, GenreEntity::class, PersonEntity::class, UserEntity::class, PersonPictureEntity::class],
     version = 1,
     exportSchema = false
 )

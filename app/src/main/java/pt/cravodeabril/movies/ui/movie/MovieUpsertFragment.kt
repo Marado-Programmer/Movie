@@ -11,11 +11,13 @@ import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import coil3.load
+import com.google.android.material.chip.Chip
 import com.google.android.material.datepicker.MaterialStyledDatePickerDialog
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.format
 import pt.cravodeabril.movies.App
 import pt.cravodeabril.movies.R
+import pt.cravodeabril.movies.data.Resource
 import pt.cravodeabril.movies.databinding.FragmentMovieUpsertBinding
 import java.util.Calendar
 
@@ -92,6 +94,31 @@ class MovieUpsertFragment : Fragment(R.layout.fragment_movie_upsert) {
             if (binding.ageInput.text.toString()
                     .toIntOrNull() != it
             ) binding.ageInput.setText(it.toString())
+        }
+
+        viewModel.genres.observe(viewLifecycleOwner) { state ->
+            when (state) {
+                is Resource.Loading -> binding.loading.visibility = View.VISIBLE
+                is Resource.Success -> {
+                    binding.loading.visibility = View.GONE
+
+                    binding.genresChipGroup.addChildrenForAccessibility(ArrayList(state.data.map { genre ->
+                        Chip(requireContext()).apply {
+                            text = genre.name
+                            setOnCheckedChangeListener { _, isChecked ->
+                                viewModel.checkGenre(
+                                    genre.id,
+                                    isChecked
+                                )
+                            }
+                        }
+                    }.toList()))
+                }
+
+                is Resource.Error -> {
+                    binding.loading.visibility = View.GONE
+                }
+            }
         }
     }
 

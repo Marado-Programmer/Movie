@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:clipToPadding="false"
-    android:padding="24dp"
+    android:padding="16dp"
     tools:context=".ui.movie.MovieUpsertFragment">
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -48,13 +48,12 @@
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/imageCard"
             android:layout_width="144dp"
-            android:layout_height="192dp"
+            android:layout_height="0dp"
             android:layout_marginVertical="24dp"
             app:cardCornerRadius="4dp"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toStartOf="@+id/releaseDateLayout"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/synopsisLayout">
+            app:layout_constraintTop_toTopOf="@+id/releaseDateLayout"
+            app:layout_constraintBottom_toBottomOf="@id/managers">
 
             <ImageView
                 android:id="@+id/image"
@@ -71,10 +70,11 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
+            android:layout_marginTop="8dp"
             android:hint="@string/release_date"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toEndOf="@+id/imageCard"
-            app:layout_constraintTop_toTopOf="@id/imageCard">
+            app:layout_constraintTop_toBottomOf="@+id/synopsisLayout">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/releaseDateInput"
@@ -91,7 +91,8 @@
             android:hint="@string/minimum_age"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="@+id/releaseDateLayout"
-            app:layout_constraintTop_toBottomOf="@+id/releaseDateLayout">
+            app:layout_constraintTop_toBottomOf="@+id/releaseDateLayout"
+            app:layout_constraintVertical_bias="0.75">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/ageInput"
@@ -100,83 +101,58 @@
                 android:inputType="number" />
         </com.google.android.material.textfield.TextInputLayout>
 
+        <TextView
+            android:id="@+id/genresLabel"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="8dp"
+            android:text="@string/genres"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/managers" />
+
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/genresChipGroup"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/genresLabel"
+            app:singleSelection="false" />
+
+        <com.google.android.material.button.MaterialButtonGroup
+            android:id="@+id/managers"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            app:layout_constraintEnd_toEndOf="@+id/ageLayout"
+            app:layout_constraintStart_toStartOf="@+id/ageLayout"
+            app:layout_constraintTop_toBottomOf="@+id/ageLayout">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/manage_genres"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:text="Manage Genres" />
+
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/manage_persons"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:text="Manage Persons" />
+        </com.google.android.material.button.MaterialButtonGroup>
+
         <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
             android:id="@+id/create"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/create"
-            app:layout_constraintBottom_toBottomOf="@+id/imageCard"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toEndOf="@+id/imageCard"
-            app:layout_constraintTop_toBottomOf="@+id/ageLayout" />
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/genresChipGroup" />
 
-        <!--        &lt;!&ndash; Minimum Age &ndash;&gt;-->
-        <!--        <com.google.android.material.textfield.TextInputLayout-->
-        <!--            android:id="@+id/minAgeLayout"-->
-        <!--            android:layout_width="0dp"-->
-        <!--            android:layout_height="wrap_content"-->
-        <!--            android:layout_marginTop="16dp"-->
-        <!--            android:hint="@string/minimum_age"-->
-        <!--            app:layout_constraintTop_toBottomOf="@id/releaseDateLayout"-->
-        <!--            app:layout_constraintStart_toStartOf="parent"-->
-        <!--            app:layout_constraintEnd_toEndOf="parent">-->
-
-        <!--            <com.google.android.material.textfield.TextInputEditText-->
-        <!--                android:id="@+id/minAgeInput"-->
-        <!--                android:inputType="number"-->
-        <!--                android:layout_width="match_parent"-->
-        <!--                android:layout_height="wrap_content"/>-->
-        <!--        </com.google.android.material.textfield.TextInputLayout>-->
-
-        <!--        &lt;!&ndash; Genres &ndash;&gt;-->
-        <!--        <TextView-->
-        <!--            android:id="@+id/genresLabel"-->
-        <!--            android:text="@string/genres"-->
-        <!--            android:layout_marginTop="24dp"-->
-        <!--            app:layout_constraintTop_toBottomOf="@id/minAgeLayout"-->
-        <!--            app:layout_constraintStart_toStartOf="parent"-->
-        <!--            android:layout_height="0dp"-->
-        <!--            android:layout_width="match_parent" />-->
-
-        <!--        <com.google.android.material.chip.ChipGroup-->
-        <!--            android:id="@+id/genresChipGroup"-->
-        <!--            android:layout_width="0dp"-->
-        <!--            android:layout_height="wrap_content"-->
-        <!--            app:singleSelection="false"-->
-        <!--            app:layout_constraintTop_toBottomOf="@id/genresLabel"-->
-        <!--            app:layout_constraintStart_toStartOf="parent"-->
-        <!--            app:layout_constraintEnd_toEndOf="parent"/>-->
-
-        <!--        &lt;!&ndash; Pictures &ndash;&gt;-->
-        <!--        <Button-->
-        <!--            android:id="@+id/addPictureBtn"-->
-        <!--            android:text="@string/add_picture"-->
-        <!--            android:layout_marginTop="24dp"-->
-        <!--            app:layout_constraintTop_toBottomOf="@id/genresChipGroup"-->
-        <!--            app:layout_constraintStart_toStartOf="parent"-->
-        <!--            android:layout_height="0dp"-->
-        <!--            android:layout_width="match_parent"/>-->
-
-        <!--        &lt;!&ndash; Save &ndash;&gt;-->
-        <!--        <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton-->
-        <!--            android:id="@+id/saveBtn"-->
-        <!--            android:text="@string/save"-->
-        <!--            android:layout_marginTop="32dp"-->
-        <!--            app:layout_constraintTop_toBottomOf="@id/addPictureBtn"-->
-        <!--            app:layout_constraintEnd_toEndOf="parent"-->
-        <!--            android:layout_height="0dp"-->
-        <!--            android:layout_width="match_parent"/>-->
-
-        <!--        &lt;!&ndash; Delete &ndash;&gt;-->
-        <!--        <com.google.android.material.button.MaterialButton-->
-        <!--            android:id="@+id/deleteBtn"-->
-        <!--            android:text="@string/delete"-->
-        <!--            android:textColor="@color/design_default_color_error"-->
-        <!--            android:layout_marginTop="16dp"-->
-        <!--            app:layout_constraintTop_toBottomOf="@id/saveBtn"-->
-        <!--            app:layout_constraintEnd_toEndOf="parent"-->
-        <!--            android:layout_height="0dp"-->
-        <!--            android:layout_width="match_parent"/>-->
         <com.google.android.material.loadingindicator.LoadingIndicator
             android:id="@+id/loading"
             android:layout_width="wrap_content"

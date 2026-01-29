@@ -14,6 +14,7 @@ import kotlinx.datetime.LocalDate
 import pt.cravodeabril.movies.App
 import pt.cravodeabril.movies.data.ProblemDetails
 import pt.cravodeabril.movies.data.Resource
+import pt.cravodeabril.movies.data.local.entity.GenreEntity
 import pt.cravodeabril.movies.data.remote.CreatePicture
 
 class MovieUpsertViewModel(app: Application, private val movieId: Long? = null) :
@@ -39,7 +40,14 @@ class MovieUpsertViewModel(app: Application, private val movieId: Long? = null) 
     private val _state = MutableLiveData<MovieFormState>(MovieFormState.Idle)
     val state: LiveData<MovieFormState> = _state
 
+    private val _genres = MutableLiveData<Resource<List<GenreEntity>>>()
+    val genres: LiveData<Resource<List<GenreEntity>>> = _genres
+
     init {
+        viewModelScope.launch {
+            repository.observeGenres()
+                .collect { genres -> _genres.postValue(Resource.Success(genres)) }
+        }
         if (isEditMode) loadMovie()
     }
 
@@ -164,6 +172,14 @@ class MovieUpsertViewModel(app: Application, private val movieId: Long? = null) 
 //        }
 
         return true
+    }
+
+    fun checkGenre(id: Long, checked: Boolean) {
+        selectedGenres.postValue(
+            if (checked) selectedGenres.value!!.plus(id) else selectedGenres.value!!.minus(
+                id
+            )
+        )
     }
 }
 
