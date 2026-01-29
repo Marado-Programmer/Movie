@@ -8,6 +8,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import coil3.load
@@ -19,6 +21,8 @@ import pt.cravodeabril.movies.App
 import pt.cravodeabril.movies.R
 import pt.cravodeabril.movies.data.Resource
 import pt.cravodeabril.movies.databinding.FragmentMovieUpsertBinding
+import pt.cravodeabril.movies.ui.person.PersonUpsertViewModel
+import pt.cravodeabril.movies.utils.FormState
 import java.util.Calendar
 
 class MovieUpsertFragment : Fragment(R.layout.fragment_movie_upsert) {
@@ -27,9 +31,14 @@ class MovieUpsertFragment : Fragment(R.layout.fragment_movie_upsert) {
     private lateinit var getContent: ActivityResultLauncher<String>
     private val args: MovieUpsertFragmentArgs by navArgs()
     private val viewModel: MovieUpsertViewModel by viewModels {
-        MovieUpsertViewModelFactory(
-            requireActivity().application, if (args.movieId == -1L) null else args.movieId
-        )
+        object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                @Suppress("UNCHECKED_CAST") return MovieUpsertViewModel(
+                    requireActivity().application,
+                    if (args.movieId == -1L) null else args.movieId
+                ) as T
+            }
+        }
     }
 
     private var _binding: FragmentMovieUpsertBinding? = null
@@ -102,17 +111,20 @@ class MovieUpsertFragment : Fragment(R.layout.fragment_movie_upsert) {
                 is Resource.Success -> {
                     binding.loading.visibility = View.GONE
 
-                    binding.genresChipGroup.addChildrenForAccessibility(ArrayList(state.data.map { genre ->
-                        Chip(requireContext()).apply {
+                    state.data.forEach { genre ->
+                        binding.genresChipGroup.addView(Chip(requireContext()).apply {
                             text = genre.name
+                            isCheckable = true
+                            isClickable = true
                             setOnCheckedChangeListener { _, isChecked ->
                                 viewModel.checkGenre(
                                     genre.id,
                                     isChecked
                                 )
                             }
-                        }
-                    }.toList()))
+
+                        })
+                    }
                 }
 
                 is Resource.Error -> {
@@ -139,25 +151,32 @@ class MovieUpsertFragment : Fragment(R.layout.fragment_movie_upsert) {
 
             viewModel.save()
         }
+
+        binding.manageGenres.setOnClickListener {
+            findNavController().navigate(MovieUpsertFragmentDirections.manageGenres())
+        }
+        binding.managePersons.setOnClickListener {
+            findNavController().navigate(MovieUpsertFragmentDirections.managePersons())
+        }
     }
 
     private fun observeState() {
         viewModel.state.observe(viewLifecycleOwner) { state ->
             when (state) {
-                MovieFormState.Loading -> {
+                FormState.Loading -> {
                     setLoading(true)
                 }
 
-                MovieFormState.Idle -> {
+                FormState.Idle -> {
                     setLoading(false)
                 }
 
-                MovieFormState.Saved, MovieFormState.Deleted -> {
+                FormState.Saved, FormState.Deleted -> {
                     setLoading(false)
                     findNavController().popBackStack()
                 }
 
-                is MovieFormState.Error -> {
+                is FormState.Error -> {
                     setLoading(false)
                     Toast.makeText(requireContext(), state.err?.title, Toast.LENGTH_LONG)
                 }

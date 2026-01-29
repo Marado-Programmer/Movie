@@ -16,6 +16,7 @@ import pt.cravodeabril.movies.data.ProblemDetails
 import pt.cravodeabril.movies.data.Resource
 import pt.cravodeabril.movies.data.local.entity.GenreEntity
 import pt.cravodeabril.movies.data.remote.CreatePicture
+import pt.cravodeabril.movies.utils.FormState
 
 class MovieUpsertViewModel(app: Application, private val movieId: Long? = null) :
     AndroidViewModel(app) {
@@ -37,8 +38,8 @@ class MovieUpsertViewModel(app: Application, private val movieId: Long? = null) 
 
     /* ---------- UI state ---------- */
 
-    private val _state = MutableLiveData<MovieFormState>(MovieFormState.Idle)
-    val state: LiveData<MovieFormState> = _state
+    private val _state = MutableLiveData<FormState>(FormState.Idle)
+    val state: LiveData<FormState> = _state
 
     private val _genres = MutableLiveData<Resource<List<GenreEntity>>>()
     val genres: LiveData<Resource<List<GenreEntity>>> = _genres
@@ -55,18 +56,18 @@ class MovieUpsertViewModel(app: Application, private val movieId: Long? = null) 
 
     private fun loadMovie() {
         viewModelScope.launch {
-            _state.value = MovieFormState.Loading
+            _state.value = FormState.Loading
 
             val refreshResult = repository.refreshMovie(movieId!!)
             if (refreshResult is Resource.Error) {
-                _state.value = MovieFormState.Error(refreshResult.problem)
+                _state.value = FormState.Error(refreshResult.problem)
                 return@launch
             }
 
             val movie = repository.observeMovie(movieId)
 
             if (movie == null) {
-                _state.value = MovieFormState.Error(
+                _state.value = FormState.Error(
                     ProblemDetails("404", "Movie not found", 404, "")
                 )
                 return@launch
@@ -78,8 +79,11 @@ class MovieUpsertViewModel(app: Application, private val movieId: Long? = null) 
             minimumAge.value = movie.movie.minimumAge ?: 0
             directorId.value = movie.movie.directorId
             selectedGenres.value = movie.genres.map { it.id }.toSet()
+            movieId?.let {
+                picture.value = Uri.parse(pictureUrl(it, movie.pictures.first().id))
+            }
 
-            _state.value = MovieFormState.Idle
+            _state.value = FormState.Idle
         }
     }
 
@@ -90,7 +94,16 @@ class MovieUpsertViewModel(app: Application, private val movieId: Long? = null) 
         if (!validate()) return
 
         viewModelScope.launch {
-            _state.value = MovieFormState.Loading
+            _state.value = FormState.Loading
+
+            val data = picture.value?.let { uri ->
+                val bytes = getApplication<App>().contentResolver.openInputStream(uri)?.use {
+                    it.readBytes()
+                }
+
+                // bytes.encodeBase64()
+                bytes
+            }
 
             val result = if (isEditMode) {
                 repository.updateMovie(
@@ -103,15 +116,6 @@ class MovieUpsertViewModel(app: Application, private val movieId: Long? = null) 
                     minimumAge = minimumAge.value!!
                 )
             } else {
-                val data = picture.value?.let { uri ->
-                    val bytes = getApplication<App>().contentResolver.openInputStream(uri)?.use {
-                        it.readBytes()
-                    }
-
-                    // bytes.encodeBase64()
-                    bytes
-                }
-
                 repository.createMovie(
                     title = title.value!!,
                     synopsis = synopsis.value!!,
@@ -131,9 +135,9 @@ class MovieUpsertViewModel(app: Application, private val movieId: Long? = null) 
             }
 
             when (result) {
-                is Resource.Success -> _state.value = MovieFormState.Saved
+                is Resource.Success -> _state.value = FormState.Saved
                 is Resource.Error -> {
-                    _state.value = MovieFormState.Error(result.problem)
+                    _state.value = FormState.Error(result.problem)
                 }
 
                 else -> {}
@@ -147,11 +151,11 @@ class MovieUpsertViewModel(app: Application, private val movieId: Long? = null) 
         if (!isEditMode) return
 
         viewModelScope.launch {
-            _state.value = MovieFormState.Loading
+            _state.value = FormState.Loading
 
             when (val result = repository.deleteMovie(movieId!!)) {
-                is Resource.Success -> _state.value = MovieFormState.Deleted
-                is Resource.Error -> _state.value = MovieFormState.Error(result.problem)
+                is Resource.Success -> _state.value = FormState.Deleted
+                is Resource.Error -> _state.value = FormState.Error(result.problem)
                 else -> {}
             }
         }
@@ -161,7 +165,7 @@ class MovieUpsertViewModel(app: Application, private val movieId: Long? = null) 
 
     private fun validate(): Boolean {
         if (title.value.isNullOrBlank()) {
-            _state.value = MovieFormState.Error(ProblemDetails("400", "Title is required", 400, ""))
+            _state.value = FormState.Error(ProblemDetails("400", "Title is required", 400, ""))
             return false
         }
 
@@ -181,22 +185,7 @@ class MovieUpsertViewModel(app: Application, private val movieId: Long? = null) 
             )
         )
     }
-}
 
-class MovieUpsertViewModelFactory(
-    private val app: Application, private val movieId: Long?
-) : ViewModelProvider.Factory {
-
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        @Suppress("UNCHECKED_CAST") return MovieUpsertViewModel(app, movieId) as T
-    }
-}
-
-
-sealed class MovieFormState {
-    object Idle : MovieFormState()
-    object Loading : MovieFormState()
-    object Saved : MovieFormState()
-    object Deleted : MovieFormState()
-    data class Error(val err: ProblemDetails?) : MovieFormState()
+    fun pictureUrl(id: Long, picId: Long): String =
+        "http://10.0.2.2:8080/movies/$id/pictures/$picId"
 }

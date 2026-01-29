@@ -35,15 +35,15 @@ class GenreListFragment : Fragment(R.layout.fragment_genre_list) {
 
         _binding = FragmentGenreListBinding.bind(view)
 
-        binding.search.apply {
-            show()
-            addTransitionListener { _, previousState, newState ->
-                if ((previousState == SearchView.TransitionState.SHOWN && newState == SearchView.TransitionState.HIDING) || newState == SearchView.TransitionState.HIDDEN) {
-                    findNavController().popBackStack()
-                }
-            }
-            editText.addTextChangedListener { editable -> viewModel.observeGenres(editable.toString()) }
-        }
+//        binding.search.apply {
+//            show()
+//            addTransitionListener { _, previousState, newState ->
+//                if ((previousState == SearchView.TransitionState.SHOWN && newState == SearchView.TransitionState.HIDING) || newState == SearchView.TransitionState.HIDDEN) {
+//                    findNavController().popBackStack()
+//                }
+//            }
+//            editText.addTextChangedListener { editable -> viewModel.observeGenres(editable.toString()) }
+//        }
 
         binding.list.adapter = adapter
 

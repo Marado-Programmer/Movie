@@ -47,9 +47,6 @@ class PersonListViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun pictureUrl(id: Long, picId: Long): String =
-        "http://10.0.2.2:8080/people/$id/picture/$picId"
-
     fun deletePerson(id: Long) {
         viewModelScope.launch {
             repository.deletePerson(id)

@@ -1,7 +1,7 @@
 package pt.cravodeabril.movies.ui.person
 
-import android.icu.text.DateFormat
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
@@ -14,26 +14,20 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
+import coil3.SingletonImageLoader
 import coil3.load
-import com.google.android.material.chip.Chip
+import coil3.request.ImageRequest
+import coil3.request.error
+import coil3.request.placeholder
+import coil3.request.target
 import com.google.android.material.datepicker.MaterialStyledDatePickerDialog
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.format
 import pt.cravodeabril.movies.App
 import pt.cravodeabril.movies.R
-import pt.cravodeabril.movies.data.Resource
-import pt.cravodeabril.movies.databinding.FragmentGenreUpsertBinding
-import pt.cravodeabril.movies.databinding.FragmentMovieUpsertBinding
 import pt.cravodeabril.movies.databinding.FragmentPersonUpsertBinding
-import pt.cravodeabril.movies.ui.genre.GenreUpsertFragmentArgs
-import pt.cravodeabril.movies.ui.genre.GenreUpsertFragmentDirections
-import pt.cravodeabril.movies.ui.genre.GenreUpsertViewModel
-import pt.cravodeabril.movies.ui.movie.MovieFormState
-import pt.cravodeabril.movies.ui.movie.MovieUpsertFragmentArgs
-import pt.cravodeabril.movies.ui.movie.MovieUpsertFragmentDirections
-import pt.cravodeabril.movies.ui.movie.MovieUpsertViewModel
-import pt.cravodeabril.movies.ui.movie.MovieUpsertViewModelFactory
 import pt.cravodeabril.movies.utils.FormState
+import java.time.format.DateTimeParseException
 import java.util.Calendar
 
 class PersonUpsertFragment : Fragment(R.layout.fragment_person_upsert) {
@@ -97,11 +91,33 @@ class PersonUpsertFragment : Fragment(R.layout.fragment_person_upsert) {
         )
 
         viewModel.dateOfBirth.observe(viewLifecycleOwner) {
-            if (LocalDate.parse(binding.dateOfBirthInput.text.toString()) != it) {
+            val text = binding.dateOfBirthInput.text.toString()
+            try {
+                if (text.isEmpty() || LocalDate.parse(text) != it) {
+                    binding.dateOfBirthInput.setText(
+                        it.format(LocalDate.Formats.ISO)
+                    )
+                }
+            } catch (_: DateTimeParseException) {
                 binding.dateOfBirthInput.setText(
                     it.format(LocalDate.Formats.ISO)
                 )
             }
+        }
+
+        viewModel.picture.observe(viewLifecycleOwner) {
+            val request = ImageRequest.Builder(binding.root.context).data(it.toString())
+                .placeholder(R.drawable.movie_border_24px)
+                .error(R.drawable.ic_launcher_foreground).listener(
+                    onError = { request, throwable ->
+                        Log.e(
+                            "Coil",
+                            "Failed to load image: ${request.data}",
+                            throwable.throwable
+                        )
+                    }).target(binding.image).build()
+
+            SingletonImageLoader.get(requireContext()).enqueue(request)
         }
     }
 

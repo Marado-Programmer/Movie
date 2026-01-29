@@ -3,7 +3,6 @@ package pt.cravodeabril.movies.ui.genre
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
@@ -12,20 +11,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
-import coil3.load
-import com.google.android.material.chip.Chip
-import com.google.android.material.datepicker.MaterialStyledDatePickerDialog
-import kotlinx.datetime.LocalDate
-import kotlinx.datetime.format
 import pt.cravodeabril.movies.App
 import pt.cravodeabril.movies.R
-import pt.cravodeabril.movies.data.Resource
 import pt.cravodeabril.movies.databinding.FragmentGenreUpsertBinding
-import pt.cravodeabril.movies.databinding.FragmentMovieUpsertBinding
-import pt.cravodeabril.movies.ui.movie.MovieFormState
-import pt.cravodeabril.movies.ui.movie.MovieUpsertFragmentDirections
+import pt.cravodeabril.movies.ui.movie.FormState
 import pt.cravodeabril.movies.utils.FormState
-import java.util.Calendar
 
 class GenreUpsertFragment : Fragment(R.layout.fragment_genre_upsert) {
 

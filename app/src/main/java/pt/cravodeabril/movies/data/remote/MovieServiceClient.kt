@@ -100,7 +100,7 @@ object MovieServiceClient {
         movieId: Long, pictureId: Long
     ): Flow<Resource<FileRepresentation>>? {
         val response = client.get("/movies/$movieId/pictures/$pictureId")
-        val bytes = response.body<ByteArray>()
+        response.body<ByteArray>()
         // FileOutputStream(file).use { it.write(bytes) }
         return null
     }

@@ -14,6 +14,9 @@ import pt.cravodeabril.movies.R
 import pt.cravodeabril.movies.data.Resource
 import pt.cravodeabril.movies.databinding.FragmentLoginBinding
 
+/**
+ * Fragment that allows logging in, and logs in automatically if possible.
+ */
 class LoginFragment : Fragment(R.layout.fragment_login) {
     private var _binding: FragmentLoginBinding? = null
     private val binding get() = _binding!!

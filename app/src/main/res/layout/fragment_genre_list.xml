@@ -6,28 +6,14 @@
     android:layout_height="match_parent"
     tools:context=".ui.genre.GenreListFragment">
 
-    <com.google.android.material.search.SearchView
-        android:id="@+id/search"
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/list"
+        android:name="cravodeabril..movies.ui.genre.GenreListFragment"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:visibility="visible"
-        android:hint="Search"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        tools:visibility="visible">
-
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/list"
-            android:name="cravodeabril..movies.ui.genre.GenreListFragment"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-            tools:context=".ui.genre.GenreListFragment"
-            tools:listitem="@layout/item_genre_list" />
-    </com.google.android.material.search.SearchView>
-
+        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+        tools:context=".ui.genre.GenreListFragment"
+        tools:listitem="@layout/item_genre_list" />
 
     <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
         android:id="@+id/create"

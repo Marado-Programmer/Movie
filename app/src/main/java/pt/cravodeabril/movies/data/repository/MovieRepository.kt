@@ -333,9 +333,7 @@ class MovieRepository(
             minimumAge = minimumAge
         )
 
-        val result = MovieServiceClient.createMovie(command)
-
-        return when (result) {
+        return when (val result = MovieServiceClient.createMovie(command)) {
             is Resource.Success -> {
                 persistMovie(result.data)
                 Resource.Success(result.data)
@@ -407,8 +405,7 @@ class MovieRepository(
     }
 
     suspend fun refreshGenres(assignedOnly: Boolean? = false): Resource<Unit> {
-        val result = MovieServiceClient.getGenres(assignedOnly)
-        return when (result) {
+        return when (val result = MovieServiceClient.getGenres(assignedOnly)) {
             is Resource.Success -> {
                 persistGenres(result.data)
                 Resource.Success(Unit)
@@ -423,7 +420,7 @@ class MovieRepository(
 
     @Transaction
     private suspend fun persistGenres(genres: List<Genre>) {
-        val userId = login.user?.id
+        login.user?.id
 
         val genres = genres.map {
             GenreEntity(
@@ -462,9 +459,7 @@ class MovieRepository(
             )
         )
 
-        val result = MovieServiceClient.createGenres(command)
-
-        return when (result) {
+        return when (val result = MovieServiceClient.createGenres(command)) {
             is Resource.Success -> {
                 persistGenres(result.data)
                 Resource.Success(result.data)
@@ -505,8 +500,7 @@ class MovieRepository(
     }
 
     suspend fun refreshPeople(): Resource<Unit> {
-        val result = MovieServiceClient.getPeople()
-        return when (result) {
+        return when (val result = MovieServiceClient.getPeople()) {
             is Resource.Success -> {
                 persistPeople(result.data.map {
                     Person(
@@ -527,7 +521,7 @@ class MovieRepository(
 
     @Transaction
     private suspend fun persistPeople(people: List<Person>) {
-        val userId = login.user?.id
+        login.user?.id
 
         personDao.upsertPeople(people.map {
             PersonEntity(
@@ -569,9 +563,7 @@ class MovieRepository(
     ): Resource<Person> {
         val command = CreatePersonCommand(name, dateOfBirth, pictures)
 
-        val result = MovieServiceClient.createPerson(command)
-
-        return when (result) {
+        return when (val result = MovieServiceClient.createPerson(command)) {
             is Resource.Success -> {
                 persistPeople(listOf(result.data))
                 Resource.Success(result.data)

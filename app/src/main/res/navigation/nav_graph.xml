@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/nav_graph.xml"
-    app:startDestination="@id/personListFragment">
+    app:startDestination="@id/movieListFragment">
 
     <fragment
         android:id="@+id/loginFragment"
@@ -95,6 +95,12 @@
         <action
             android:id="@+id/action_movieUpsertFragment_to_logInFragment"
             app:destination="@id/loginFragment" />
+        <action
+            android:id="@+id/manage_genres"
+            app:destination="@id/genreListFragment" />
+        <action
+            android:id="@+id/manage_persons"
+            app:destination="@id/personListFragment" />
     </fragment>
     <fragment
         android:id="@+id/genreListFragment"

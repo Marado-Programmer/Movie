@@ -2,6 +2,7 @@ package pt.cravodeabril.movies.ui.person
 
 import android.app.Application
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -15,6 +16,7 @@ import pt.cravodeabril.movies.data.ProblemDetails
 import pt.cravodeabril.movies.data.Resource
 import pt.cravodeabril.movies.data.remote.CreatePicture
 import pt.cravodeabril.movies.utils.FormState
+import java.io.FileNotFoundException
 
 class PersonUpsertViewModel(app: Application, private val id: Long? = null) :
     AndroidViewModel(app) {
@@ -57,6 +59,9 @@ class PersonUpsertViewModel(app: Application, private val id: Long? = null) :
 
             name.value = person.person.name
             dateOfBirth.value = person.person.dateOfBirth
+            id?.let {
+                picture.value = Uri.parse(pictureUrl(it, person.pictures.first().id))
+            }
 
             _state.value = FormState.Idle
         }
@@ -70,21 +75,25 @@ class PersonUpsertViewModel(app: Application, private val id: Long? = null) :
 
 
             val data = picture.value?.let { uri ->
-                val bytes = getApplication<App>().contentResolver.openInputStream(uri)?.use {
-                    it.readBytes()
-                }
+                try {
+                    val bytes = getApplication<App>().contentResolver.openInputStream(uri)?.use {
+                        it.readBytes()
+                    }
 
-                // bytes.encodeBase64()
-                bytes
+                    // bytes.encodeBase64()
+                    bytes
+                } catch (_: FileNotFoundException) {
+                    null
+                }
             }
 
             val result = if (isEditMode) {
-                repository.updatePerson(
+                var res = repository.updatePerson(
                     id = id!!, name = name.value!!, dateOfBirth = dateOfBirth.value
                 )
 
                 data?.let { pic ->
-                    repository.updatePersonPicture(
+                    res = repository.updatePersonPicture(
                         id, CreatePicture(
                             filename = "${name.value!!}.jpg",
                             data = pic.encodeBase64(),
@@ -92,6 +101,8 @@ class PersonUpsertViewModel(app: Application, private val id: Long? = null) :
                         )
                     )
                 }
+
+                res
             } else {
                 repository.createPerson(
                     name = name.value!!,
@@ -119,12 +130,16 @@ class PersonUpsertViewModel(app: Application, private val id: Long? = null) :
     }
 
     fun delete() {
+
+        Log.v("RES", id.toString())
+        Log.v("RES", isEditMode.toString())
         if (!isEditMode) return
 
         viewModelScope.launch {
             _state.value = FormState.Loading
-
-            when (val result = repository.deletePerson(id!!)) {
+            val result = repository.deletePerson(id!!)
+            Log.v("RES", result.toString())
+            when (result) {
                 is Resource.Success -> _state.value = FormState.Deleted
                 is Resource.Error -> _state.value = FormState.Error(result.problem)
                 else -> {}
@@ -140,4 +155,7 @@ class PersonUpsertViewModel(app: Application, private val id: Long? = null) :
 
         return true
     }
+
+    fun pictureUrl(id: Long, picId: Long): String =
+        "http://10.0.2.2:8080/people/$id/picture/$picId"
 }

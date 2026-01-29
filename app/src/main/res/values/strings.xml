@@ -4,17 +4,17 @@
     <string name="prompt_email">E-mail</string>
     <string name="prompt_password">Password</string>
     <string name="action_sign_in">Sign in or register</string>
-    <string name="action_sign_in_short">Sign in</string>
+    <string name="action_sign_in_short" translatable="false">Sign in</string>
     <string name="welcome">"Welcome!"</string>
     <string name="invalid_username">Not a valid username</string>
     <string name="invalid_password">Password must be >5 characters</string>
     <string name="login_failed">"Login failed"</string>
     <string name="add_movie">Add Movie</string>
     <string name="movies">🎞 Movies</string>
-    <string name="movie_poster">poster</string>
+    <string name="movie_poster" translatable="false">poster</string>
     <string name="movie_details">Movie\'s details</string>
     <string name="movie_edit">Edit Movie</string>
-    <string name="logout">Logout</string>
+    <string name="logout" translatable="false">Logout</string>
     <string name="edit">Edit</string>
     <string name="rate_this_movie">Rate this movie</string>
     <string name="mark_favorite">Mark Favorite</string>
@@ -23,7 +23,7 @@
     <string name="title">Title</string>
     <string name="description">Description</string>
     <string name="create">Create</string>
-    <string name="movie_age">%d+</string>
+    <string name="movie_age" translatable="false">%d+</string>
     <string name="movie_director">Directed by %s</string>
     <string name="movie_release">Release: %1$s</string>
     <string name="movie_rating">%1$s (%2$d ratings)</string>
