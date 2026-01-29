@@ -14,7 +14,6 @@ import androidx.navigation.fragment.navArgs
 import pt.cravodeabril.movies.App
 import pt.cravodeabril.movies.R
 import pt.cravodeabril.movies.databinding.FragmentGenreUpsertBinding
-import pt.cravodeabril.movies.ui.movie.FormState
 import pt.cravodeabril.movies.utils.FormState
 
 class GenreUpsertFragment : Fragment(R.layout.fragment_genre_upsert) {
