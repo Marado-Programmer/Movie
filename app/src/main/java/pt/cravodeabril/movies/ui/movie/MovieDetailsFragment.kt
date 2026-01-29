@@ -2,8 +2,10 @@ package pt.cravodeabril.movies.ui.movie
 
 import android.os.Bundle
 import android.view.View
+import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import coil3.SingletonImageLoader
 import coil3.request.ImageRequest
@@ -33,6 +35,7 @@ class MovieDetailsFragment : Fragment(R.layout.fragment_movie_details) {
                 is Resource.Success -> {
                     bindMovie(state.data)
                 }
+
                 is Resource.Error -> {
                     // showError(state.message)
                 }
@@ -53,12 +56,29 @@ class MovieDetailsFragment : Fragment(R.layout.fragment_movie_details) {
             viewModel.toggleFavorite()
         }
 
-        binding.rateButton.setOnClickListener {
-        }
+        binding.rateButton.setOnClickListener {}
 
-        // Edit (admin only)
-//        binding.editButton.setOnClickListener {
-//        }
+        binding.edit.setOnClickListener {
+            viewModel.id()?.let {
+                findNavController().navigate(
+                    MovieDetailsFragmentDirections.actionMovieDetailsFragmentToMovieEditFragment(it)
+                )
+            }
+        }
+        binding.delete.setOnClickListener {
+            AlertDialog.Builder(requireContext()).setTitle(R.string.delete)
+                .setMessage(R.string.confirm_deletion)
+                .setIcon(R.drawable.delete_forever_24px).setPositiveButton(
+                    R.string.positive
+                ) { _, _ ->
+                    run {
+                        viewModel.delete()
+                        findNavController().popBackStack()
+                    }
+                }
+                .setNegativeButton(R.string.negative, null).setCancelable(false).create()
+                .show()
+        }
     }
 
     private fun bindMovie(movie: MovieWithDetails?) {
@@ -66,16 +86,16 @@ class MovieDetailsFragment : Fragment(R.layout.fragment_movie_details) {
 
         binding.title.text = movie.movie.title
         binding.synopsis.text = movie.movie.synopsis
-        binding.movieDirector.text = getString(R.string.movie_director, movie.movie.directorId ?: "Unknown")
+        binding.movieDirector.text =
+            getString(R.string.movie_director, movie.movie.directorId ?: "Unknown")
         binding.movieGenres.text = movie.genres.joinToString(", ")
         binding.movieAge.text = getString(R.string.movie_age, movie.movie.minimumAge)
         val mainPicture = movie.pictures.firstOrNull { it.mainPicture }
         mainPicture?.let {
             val posterUrl = "http://10.0.2.2:8080/movies/${movie.movie.id}/pictures/${it.id}"
-            val request = ImageRequest.Builder(binding.root.context)
-                .data(posterUrl)
-                .target(binding.picture)
-                .build()
+            val request =
+                ImageRequest.Builder(binding.root.context).data(posterUrl).target(binding.picture)
+                    .build()
             SingletonImageLoader.get(requireContext()).enqueue(request)
         }
     }

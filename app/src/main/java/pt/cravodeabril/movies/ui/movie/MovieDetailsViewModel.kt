@@ -48,4 +48,21 @@ class MovieDetailsViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
     }
+
+    fun id(): Long? {
+        val result = movie.value
+        if (result is Resource.Success) {
+            return result.data.movie.id
+        }
+        return null
+    }
+
+    fun delete() {
+        val result = movie.value
+        if (result is Resource.Success) {
+            viewModelScope.launch {
+                repository.deleteMovie(result.data.movie.id)
+            }
+        }
+    }
 }
