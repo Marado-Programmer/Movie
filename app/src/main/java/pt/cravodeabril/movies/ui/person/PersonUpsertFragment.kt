@@ -6,6 +6,7 @@ import android.view.View
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -120,8 +121,23 @@ class PersonUpsertFragment : Fragment(R.layout.fragment_person_upsert) {
             viewModel.save()
         }
 
-        if (viewModel.isEditMode)
+        if (viewModel.isEditMode) {
             binding.create.setText(R.string.edit)
+            binding.delete.setOnClickListener {
+                AlertDialog.Builder(requireContext()).setTitle(R.string.delete)
+                    .setMessage(R.string.confirm_deletion)
+                    .setIcon(R.drawable.delete_forever_24px).setPositiveButton(
+                        R.string.positive
+                    ) { _, _ -> {
+                        viewModel.delete()
+                        findNavController().popBackStack()
+                    } }
+                    .setNegativeButton(R.string.negative, null).setCancelable(false).create()
+                    .show()
+            }
+        } else {
+            binding.delete.visibility = View.GONE
+        }
     }
 
     private fun observeState() {
